@@ -132,23 +132,19 @@ INSERT INTO accounts (id, code, name, type, category, parent_id) VALUES
 (1003, '1300', 'Piutang Operasional', 'ASSET', 'Lancar', 1000),
 (1500, '1500', 'Aset Tetap', 'ASSET', 'Tetap', NULL),
 (1501, '1510', 'Peralatan & Inventaris Kantor', 'ASSET', 'Tetap', 1500),
-
 -- LIABILITIES
 (2000, '2000', 'Kewajiban Jangka Pendek', 'LIABILITY', 'Jangka Pendek', NULL),
 (2001, '2100', 'Hutang Usaha / Vendor', 'LIABILITY', 'Jangka Pendek', 2000),
 (2002, '2200', 'Hutang Gaji & Operasional', 'LIABILITY', 'Jangka Pendek', 2000),
-
 -- EQUITY
 (3000, '3000', 'Ekuitas Organisasi', 'EQUITY', 'Modal', NULL),
 (3001, '3100', 'Modal Awal Kas Organisasi', 'EQUITY', 'Modal', 3000),
 (3002, '3200', 'Laba Ditahan', 'EQUITY', 'Modal', 3000),
-
 -- REVENUE
 (4000, '4000', 'Pendapatan Operasional', 'REVENUE', 'Pendapatan Utama', NULL),
 (4001, '4100', 'Iuran & Contribusi Anggota', 'REVENUE', 'Pendapatan Utama', 4000),
 (4002, '4200', 'Pendapatan Event / Project', 'REVENUE', 'Pendapatan Utama', 4000),
 (4003, '4300', 'Donasi & Hibah Organisasi', 'REVENUE', 'Pendapatan Lain', 4000),
-
 -- EXPENSES
 (5000, '5000', 'Beban Operasional', 'EXPENSE', 'Operasional', NULL),
 (5001, '5100', 'Beban Gaji & Honorarium', 'EXPENSE', 'Operasional', 5000),
