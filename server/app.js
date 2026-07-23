@@ -13,6 +13,7 @@ const budgetRoutes = require('./routes/budgetRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const userRoutes = require('./routes/userRoutes');
 const roleRoutes = require('./routes/roleRoutes');
+const jobOrderRoutes = require('./routes/jobOrderRoutes');
 
 const app = express();
 
@@ -36,6 +37,7 @@ app.use('/api/v1/budgets', budgetRoutes);
 app.use('/api/v1/reports', reportRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/roles', roleRoutes);
+app.use('/api/v1/job-orders', jobOrderRoutes);
 
 // Health check endpoint
 app.get('/api/v1/health', (req, res) => {

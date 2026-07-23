@@ -13,6 +13,10 @@ import BudgetPage from '../features/budget/BudgetPage';
 import ReportPage from '../features/reports/ReportPage';
 import UserManagementPage from '../features/admin/UserManagementPage';
 import RoleManagementPage from '../features/admin/RoleManagementPage';
+import JobOrderListPage from '../features/operations/job-orders/JobOrderListPage';
+import CreateJobOrderPage from '../features/operations/job-orders/CreateJobOrderPage';
+import EditJobOrderPage from '../features/operations/job-orders/EditJobOrderPage';
+import JobOrderDetailPage from '../features/operations/job-orders/JobOrderDetailPage';
 
 export default function AppRoutes() {
   return (
@@ -52,6 +56,20 @@ export default function AppRoutes() {
 
             <Route element={<ProtectedRoute requiredPermission="roles.read" />}>
               <Route path="/admin/roles" element={<RoleManagementPage />} />
+            </Route>
+
+            {/* Operasional Routes */}
+            <Route element={<ProtectedRoute requiredPermission="job_orders.read" />}>
+              <Route path="/job-orders" element={<JobOrderListPage />} />
+              <Route path="/job-orders/:id" element={<JobOrderDetailPage />} />
+            </Route>
+            
+            <Route element={<ProtectedRoute requiredPermission="job_orders.create" />}>
+              <Route path="/job-orders/create" element={<CreateJobOrderPage />} />
+            </Route>
+            
+            <Route element={<ProtectedRoute requiredPermission="job_orders.update" />}>
+              <Route path="/job-orders/:id/edit" element={<EditJobOrderPage />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

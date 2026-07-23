@@ -9,7 +9,8 @@ import {
   FileSpreadsheet,
   X,
   Building2,
-  ShieldCheck
+  ShieldCheck,
+  Truck
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -18,11 +19,12 @@ export default function Sidebar({ isOpen, onClose }) {
 
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, permission: '*' },
-    { name: 'Chart of Accounts', path: '/coa', icon: FolderTree, permission: 'coa.read' },
-    { name: 'Transaksi', path: '/transactions', icon: Receipt, permission: 'transactions.read' },
-    { name: 'Approval Flow', path: '/approvals', icon: CheckSquare, permission: 'approvals.read' },
-    { name: 'Manajemen Anggaran', path: '/budgets', icon: PieChart, permission: 'budgets.read' },
-    { name: 'Laporan Keuangan', path: '/reports', icon: FileSpreadsheet, permission: 'reports.read' },
+    { name: 'Job Order', path: '/job-orders', icon: Truck, permission: 'job_orders.read', section: 'operasional' },
+    { name: 'Chart of Accounts', path: '/coa', icon: FolderTree, permission: 'coa.read', section: 'keuangan' },
+    { name: 'Transaksi', path: '/transactions', icon: Receipt, permission: 'transactions.read', section: 'keuangan' },
+    { name: 'Approval Flow', path: '/approvals', icon: CheckSquare, permission: 'approvals.read', section: 'keuangan' },
+    { name: 'Manajemen Anggaran', path: '/budgets', icon: PieChart, permission: 'budgets.read', section: 'keuangan' },
+    { name: 'Laporan Keuangan', path: '/reports', icon: FileSpreadsheet, permission: 'reports.read', section: 'keuangan' },
   ];
 
   const adminItems = [
@@ -71,7 +73,7 @@ export default function Sidebar({ isOpen, onClose }) {
             <div className="px-3 pb-2 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
               Menu Utama
             </div>
-            {filteredNavItems.map((item) => (
+            {filteredNavItems.filter(i => !i.section).map((item) => (
               <NavLink
                 key={item.path}
                 to={item.path}
@@ -88,6 +90,56 @@ export default function Sidebar({ isOpen, onClose }) {
                 <span>{item.name}</span>
               </NavLink>
             ))}
+
+            {filteredNavItems.some(i => i.section === 'operasional') && (
+              <>
+                <div className="px-3 pt-4 pb-2 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                  Operasional
+                </div>
+                {filteredNavItems.filter(i => i.section === 'operasional').map((item) => (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    onClick={onClose}
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                        isActive
+                          ? 'bg-sky-600/15 text-sky-400 border border-sky-500/30 shadow-sm'
+                          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                      }`
+                    }
+                  >
+                    <item.icon className="w-4 h-4 shrink-0" />
+                    <span>{item.name}</span>
+                  </NavLink>
+                ))}
+              </>
+            )}
+            
+            {filteredNavItems.some(i => i.section === 'keuangan') && (
+              <>
+                <div className="px-3 pt-4 pb-2 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                  Keuangan
+                </div>
+                {filteredNavItems.filter(i => i.section === 'keuangan').map((item) => (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    onClick={onClose}
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                        isActive
+                          ? 'bg-sky-600/15 text-sky-400 border border-sky-500/30 shadow-sm'
+                          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                      }`
+                    }
+                  >
+                    <item.icon className="w-4 h-4 shrink-0" />
+                    <span>{item.name}</span>
+                  </NavLink>
+                ))}
+              </>
+            )}
 
             {filteredAdminItems.length > 0 && (
               <>
