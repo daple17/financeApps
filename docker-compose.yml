@@ -1,0 +1,54 @@
+services:
+  mysql-db:
+    image: mysql:8.0
+    container_name: financial_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: financial_app
+      MYSQL_USER: dbuser
+      MYSQL_PASSWORD: dbpassword
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      # Otomatis seed database pada saat pertama kali container dihidupkan
+      - ./server/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 10s
+      retries: 5
+
+  backend-api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: financial_backend
+    restart: always
+    ports:
+      - "5001:5000"
+    environment:
+      - DB_HOST=mysql-db
+      - DB_USER=dbuser
+      - DB_PASSWORD=dbpassword
+      - DB_NAME=financial_app
+      - JWT_SECRET=this_is_a_very_secret_key_for_jwt_auth_123!
+      - JWT_REFRESH_SECRET=this_is_another_very_secret_key_for_refresh_456!
+      - PORT=5000
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+
+  frontend-web:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: financial_frontend
+    restart: always
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend-api
+
+volumes:
+  mysql_data:

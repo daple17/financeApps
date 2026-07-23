@@ -1,0 +1,13 @@
+{
+  "name": "org-finance-app",
+  "version": "1.0.0",
+  "description": "Monolith application for deployment on Railway",
+  "scripts": {
+    "install": "cd server && npm install && cd ../client && npm install",
+    "build": "cd client && npm run build",
+    "start": "cd server && npm start"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
