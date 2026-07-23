@@ -3,6 +3,13 @@
 -- Disable foreign key checks for table setup
 SET FOREIGN_KEY_CHECKS = 0;
 
+DROP TABLE IF EXISTS job_order_activities;
+DROP TABLE IF EXISTS export_details;
+DROP TABLE IF EXISTS import_details;
+DROP TABLE IF EXISTS trucking_details;
+DROP TABLE IF EXISTS trucking_containers;
+DROP TABLE IF EXISTS job_orders;
+
 DROP TABLE IF EXISTS audit_logs;
 DROP TABLE IF EXISTS budgets;
 DROP TABLE IF EXISTS journal_entries;
@@ -152,3 +159,221 @@ INSERT INTO accounts (id, code, name, type, category, parent_id) VALUES
 (5003, '5300', 'Beban Listrik, Air & Internet', 'EXPENSE', 'Operasional', 5000),
 (5004, '5400', 'Beban Perlengkapan ATK & Konsumsi', 'EXPENSE', 'Operasional', 5000),
 (5005, '5500', 'Beban Transportasi & Perjalanan Dinas', 'EXPENSE', 'Operasional', 5000);
+-- Additive migration for Phase 1: Job Order Module
+-- This script does not drop existing tables.
+
+-- 1. Job Orders Table
+CREATE TABLE IF NOT EXISTS job_orders (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  job_order_number VARCHAR(50) NOT NULL UNIQUE,
+  job_date DATE NOT NULL,
+  
+  -- Customer Information (Denormalized for Phase 1)
+  customer_name VARCHAR(255) NULL,
+  customer_reference VARCHAR(100) NULL,
+  customer_pic VARCHAR(100) NULL,
+  customer_phone VARCHAR(50) NULL,
+  
+  -- Service
+  service_type VARCHAR(50) NULL,
+  
+  -- Pickup Information
+  pickup_location VARCHAR(255) NULL,
+  pickup_address TEXT NULL,
+  pickup_date DATETIME NULL,
+  
+  -- Delivery Information
+  delivery_location VARCHAR(255) NULL,
+  delivery_address TEXT NULL,
+  delivery_target_date DATETIME NULL,
+  
+  -- Cargo Information
+  cargo_type VARCHAR(100) NULL,
+  cargo_description TEXT NULL,
+  cargo_quantity DECIMAL(15, 2) NULL,
+  cargo_unit VARCHAR(50) NULL,
+  cargo_weight DECIMAL(15, 2) NULL,
+  cargo_volume DECIMAL(15, 2) NULL,
+  
+  -- Transport Requirement
+  vehicle_type_requirement VARCHAR(100) NULL,
+  vehicle_quantity INT NULL,
+  
+  -- Additional Information
+  special_instruction TEXT NULL,
+  internal_notes TEXT NULL,
+  
+  -- Status
+  job_status VARCHAR(50) NOT NULL DEFAULT 'DRAFT',
+  
+  -- Audit
+  created_by INT NOT NULL,
+  updated_by INT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  
+  FOREIGN KEY (created_by) REFERENCES users(id),
+  FOREIGN KEY (updated_by) REFERENCES users(id)
+);
+
+-- 2. Job Order Activities Table
+CREATE TABLE IF NOT EXISTS job_order_activities (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  job_order_id INT NOT NULL,
+  activity_type VARCHAR(50) NOT NULL,
+  description TEXT NOT NULL,
+  performed_by INT NULL,
+  source VARCHAR(50) DEFAULT 'WEB',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  
+  FOREIGN KEY (job_order_id) REFERENCES job_orders(id) ON DELETE CASCADE,
+  FOREIGN KEY (performed_by) REFERENCES users(id) ON DELETE SET NULL
+);
+-- Additive migration for Phase 1.1: Job Order Types & Dynamic Form
+-- This script adds the job_order_type column and export detail table.
+
+-- 1. Add job_order_type to job_orders if it doesn't exist
+-- Note: MySQL doesn't have "ADD COLUMN IF NOT EXISTS" easily in one line without procedures for older versions, 
+-- but assuming this runs once. 
+ALTER TABLE job_orders ADD COLUMN job_order_type VARCHAR(50) NULL AFTER job_date;
+
+-- 2. Job Order Export Details Table
+CREATE TABLE IF NOT EXISTS export_details (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  job_order_id INT NOT NULL UNIQUE,
+  
+  -- Export Document
+  aju_number VARCHAR(100) NULL,
+  invoice_number VARCHAR(100) NULL,
+  shipper VARCHAR(255) NULL,
+  
+  -- Shipping Document
+  bl_number VARCHAR(100) NULL,
+  bl_date DATE NULL,
+  hbl_number VARCHAR(100) NULL,
+  hbl_date DATE NULL,
+  si_do_number VARCHAR(100) NULL,
+  si_do_date DATE NULL,
+  
+  -- Shipping Information
+  eta_date DATE NULL,
+  planned_delivery_date DATE NULL,
+  vessel VARCHAR(255) NULL,
+  warehouse VARCHAR(255) NULL,
+  
+  -- Cargo / Container
+  party_volume_type VARCHAR(50) NULL, -- 'FCL' or 'LCL/BB'
+  
+  -- FCL specific container quantity
+  container_20_qty INT NULL DEFAULT 0,
+  container_40_qty INT NULL DEFAULT 0,
+  container_45_qty INT NULL DEFAULT 0,
+  container_ot_qty INT NULL DEFAULT 0,
+  container_fr_qty INT NULL DEFAULT 0,
+  
+  -- General volume/qty for Export
+  tonnage DECIMAL(15, 2) NULL,
+  volume_m3 DECIMAL(15, 2) NULL,
+  quantity DECIMAL(15, 2) NULL,
+  unit VARCHAR(50) NULL,
+  
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  
+  FOREIGN KEY (job_order_id) REFERENCES job_orders(id) ON DELETE CASCADE
+);
+-- Additive migration for Phase 1.2: Import Job Order Detail & Export Enhancements
+-- 1. Add customs_document_type, customs_document_other, and etd_date to job_order_export_details
+ALTER TABLE export_details 
+  ADD COLUMN customs_document_type VARCHAR(50) NULL AFTER job_order_id,
+  ADD COLUMN customs_document_other VARCHAR(255) NULL AFTER customs_document_type,
+  ADD COLUMN etd_date DATE NULL AFTER eta_date;
+
+-- 2. Migrate existing eta_date data to etd_date for EXPORT jobs
+UPDATE export_details SET etd_date = eta_date WHERE eta_date IS NOT NULL;
+
+-- 3. Job Order Import Details Table
+CREATE TABLE IF NOT EXISTS import_details (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  job_order_id INT NOT NULL UNIQUE,
+  
+  -- Import Document
+  customs_document_type VARCHAR(50) NULL,
+  customs_document_other VARCHAR(255) NULL,
+  aju_number VARCHAR(100) NULL,
+  invoice_number VARCHAR(100) NULL,
+  shipper VARCHAR(255) NULL,
+  
+  -- Shipping Document
+  bl_number VARCHAR(100) NULL,
+  bl_date DATE NULL,
+  hbl_number VARCHAR(100) NULL,
+  hbl_date DATE NULL,
+  do_number VARCHAR(100) NULL,
+  do_date DATE NULL,
+  
+  -- Shipping Information
+  eta_date DATE NULL,
+  planned_delivery_date DATE NULL,
+  vessel VARCHAR(255) NULL,
+  warehouse VARCHAR(255) NULL,
+  
+  -- Cargo / Container
+  party_volume_type VARCHAR(50) NULL, -- 'FCL' or 'LCL/BB'
+  
+  -- FCL specific container quantity
+  container_20_qty INT NULL DEFAULT 0,
+  container_40_qty INT NULL DEFAULT 0,
+  container_45_qty INT NULL DEFAULT 0,
+  container_ot_qty INT NULL DEFAULT 0,
+  container_fr_qty INT NULL DEFAULT 0,
+  
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  
+  FOREIGN KEY (job_order_id) REFERENCES job_orders(id) ON DELETE CASCADE
+);
+-- Migration for Phase 1.3: Job Order Type TRUCKING
+
+-- 1. Trucking Details Table
+CREATE TABLE IF NOT EXISTS trucking_details (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  job_order_id INT NOT NULL UNIQUE,
+  
+  -- Shipping Reference
+  bl_number VARCHAR(100) NULL,
+  bl_date DATE NULL,
+  si_do_number VARCHAR(100) NULL,
+  si_do_date DATE NULL,
+  
+  -- Shipping Information
+  vessel VARCHAR(255) NULL,
+  planned_delivery_date DATE NULL,
+  
+  -- Cargo / Container
+  party_volume_type VARCHAR(50) NULL, -- 'FCL' or 'LCL/BB'
+  
+  -- LCL / BB Specific fields
+  weight DECIMAL(10,2) NULL,
+  volume DECIMAL(10,2) NULL,
+  quantity DECIMAL(10,2) NULL,
+  unit VARCHAR(50) NULL,
+  
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  
+  FOREIGN KEY (job_order_id) REFERENCES job_orders(id) ON DELETE CASCADE
+);
+
+-- 2. Trucking Containers Table
+CREATE TABLE IF NOT EXISTS trucking_containers (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  job_order_id INT NOT NULL,
+  container_type VARCHAR(50) NOT NULL,
+  quantity INT NOT NULL DEFAULT 1,
+  
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  
+  FOREIGN KEY (job_order_id) REFERENCES job_orders(id) ON DELETE CASCADE
+);
