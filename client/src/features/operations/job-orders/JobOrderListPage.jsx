@@ -104,6 +104,13 @@ export default function JobOrderListPage() {
       }
     }
 
+    if (job.job_order_type === 'PROJECT' && job.project_detail) {
+      if (job.project_detail.si_do_number) {
+        label = 'SI / DO';
+        value = job.project_detail.si_do_number;
+      }
+    }
+
     return (
       <div className="flex flex-col">
         <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">{label}</span>
@@ -123,6 +130,8 @@ export default function JobOrderListPage() {
       secondary = job.import_detail.vessel;
     } else if (job.job_order_type === 'TRUCKING' && job.trucking_detail?.vessel) {
       secondary = job.trucking_detail.vessel;
+    } else if (job.job_order_type === 'PROJECT' && job.project_detail?.project_name) {
+      secondary = job.project_detail.project_name;
     }
 
     return (
@@ -176,6 +185,13 @@ export default function JobOrderListPage() {
 
     if (job.job_order_type === 'TRUCKING' && job.trucking_detail) {
       const planned = job.trucking_detail.planned_delivery_date;
+      if (planned) {
+        return <div className="text-xs text-slate-300"><div><span className="text-slate-500 mr-1 inline-block w-[50px]">Delivery</span>{formatCompactDate(planned)}</div></div>;
+      }
+    }
+
+    if (job.job_order_type === 'PROJECT' && job.project_detail) {
+      const planned = job.project_detail.planned_delivery_date;
       if (planned) {
         return <div className="text-xs text-slate-300"><div><span className="text-slate-500 mr-1 inline-block w-[50px]">Delivery</span>{formatCompactDate(planned)}</div></div>;
       }

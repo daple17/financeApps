@@ -486,6 +486,49 @@ export default function JobOrderDetailPage() {
                 </div>
               </Card>
             )}
+
+            {jobOrder.job_order_type === 'PROJECT' && jobOrder.project_details && (
+              <Card className="md:col-span-2">
+                <CardHeader title="Detail Project" />
+                <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+                  <div className="space-y-3">
+                    <div className="text-xs font-bold text-sky-400 uppercase">Project Reference</div>
+                    <div className="flex justify-between border-b border-slate-800/50 pb-1">
+                      <span className="text-slate-400">No. SI / DO</span>
+                      <span className="text-white">{jobOrder.project_details.si_do_number || '-'}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-800/50 pb-1">
+                      <span className="text-slate-400">Tanggal SI / DO</span>
+                      <span className="text-white">{jobOrder.project_details.si_do_date ? new Date(jobOrder.project_details.si_do_date).toLocaleDateString('id-ID') : '-'}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-800/50 pb-1">
+                      <span className="text-slate-400">Rencana Delivery</span>
+                      <span className="text-white">{jobOrder.project_details.planned_delivery_date ? new Date(jobOrder.project_details.planned_delivery_date).toLocaleDateString('id-ID') : '-'}</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="text-xs font-bold text-emerald-400 uppercase">Project Information</div>
+                    <div className="flex justify-between border-b border-slate-800/50 pb-1">
+                      <span className="text-slate-400">Nama Project</span>
+                      <span className="text-white">{jobOrder.project_details.project_name || '-'}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-800/50 pb-1">
+                      <span className="text-slate-400">Lokasi / Site Project</span>
+                      <span className="text-white">{jobOrder.project_details.project_site || '-'}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-800/50 pb-1">
+                      <span className="text-slate-400">PIC Site</span>
+                      <span className="text-white">{jobOrder.project_details.site_pic_name || '-'}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-800/50 pb-1">
+                      <span className="text-slate-400">No. Telepon PIC Site</span>
+                      <span className="text-white">{jobOrder.project_details.site_pic_phone || '-'}</span>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            )}
           </div>
         )}
 

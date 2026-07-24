@@ -147,6 +147,21 @@ class JobOrderModel {
         }
       }
 
+      // Handle Project Details
+      if (data.job_order_type === 'PROJECT' && data.project_details) {
+        const proj = data.project_details;
+        const projectQuery = `
+          INSERT INTO project_details (
+            job_order_id, si_do_number, si_do_date, planned_delivery_date,
+            project_name, project_site, site_pic_name, site_pic_phone
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+        await connection.query(projectQuery, [
+          jobOrderId, proj.si_do_number || null, proj.si_do_date || null, proj.planned_delivery_date || null,
+          proj.project_name || null, proj.project_site || null, proj.site_pic_name || null, proj.site_pic_phone || null
+        ]);
+      }
+
       // Log Activity
       const activityQuery = `
         INSERT INTO job_order_activities (job_order_id, activity_type, description, performed_by, source)
@@ -180,12 +195,14 @@ class JobOrderModel {
         u.name AS created_by_name,
         ed.bl_number AS export_bl_number, ed.si_do_number AS export_si_number, ed.vessel AS export_vessel, ed.eta_date AS export_eta, ed.etd_date AS export_etd, ed.planned_delivery_date AS export_planned,
         imp.bl_number AS import_bl_number, imp.do_number AS import_do_number, imp.vessel AS import_vessel, imp.eta_date AS import_eta, imp.planned_delivery_date AS import_planned,
-        trk.bl_number AS trucking_bl_number, trk.si_do_number AS trucking_si_do_number, trk.vessel AS trucking_vessel, trk.planned_delivery_date AS trucking_planned
+        trk.bl_number AS trucking_bl_number, trk.si_do_number AS trucking_si_do_number, trk.vessel AS trucking_vessel, trk.planned_delivery_date AS trucking_planned,
+        proj.si_do_number AS project_si_do_number, proj.planned_delivery_date AS project_planned
       FROM job_orders j
       JOIN users u ON j.created_by = u.id
       LEFT JOIN export_details ed ON j.id = ed.job_order_id
       LEFT JOIN import_details imp ON j.id = imp.job_order_id
       LEFT JOIN trucking_details trk ON j.id = trk.job_order_id
+      LEFT JOIN project_details proj ON j.id = proj.job_order_id
       WHERE 1=1
     `;
     const params = [];
@@ -222,6 +239,7 @@ class JobOrderModel {
         export_bl_number, export_si_number, export_vessel, export_eta, export_etd, export_planned,
         import_bl_number, import_do_number, import_vessel, import_eta, import_planned,
         trucking_bl_number, trucking_si_do_number, trucking_vessel, trucking_planned,
+        project_si_do_number, project_planned,
         ...job
       } = row;
       
@@ -248,6 +266,11 @@ class JobOrderModel {
           si_do_number: trucking_si_do_number,
           vessel: trucking_vessel,
           planned_delivery_date: trucking_planned
+        };
+      } else if (job.job_order_type === 'PROJECT') {
+        job.project_detail = {
+          si_do_number: project_si_do_number,
+          planned_delivery_date: project_planned
         };
       }
       
@@ -366,6 +389,15 @@ class JobOrderModel {
         const containersQuery = `SELECT container_type as type, quantity FROM trucking_containers WHERE job_order_id = ? ORDER BY id ASC`;
         const [containerRows] = await db.query(containersQuery, [id]);
         jobOrder.trucking_details.containers = containerRows;
+      }
+    }
+
+    // Fetch project details if type is PROJECT
+    if (jobOrder.job_order_type === 'PROJECT') {
+      const projectQuery = `SELECT * FROM project_details WHERE job_order_id = ?`;
+      const [projectRows] = await db.query(projectQuery, [id]);
+      if (projectRows.length > 0) {
+        jobOrder.project_details = projectRows[0];
       }
     }
 
@@ -527,6 +559,26 @@ class JobOrderModel {
           `;
           await connection.query(containerQuery, [containerData]);
         }
+      }
+
+      // Handle Project Details update
+      if (data.job_order_type === 'PROJECT' && data.project_details) {
+        const proj = data.project_details;
+        const projectQuery = `
+          INSERT INTO project_details (
+            job_order_id, si_do_number, si_do_date, planned_delivery_date,
+            project_name, project_site, site_pic_name, site_pic_phone
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          ON DUPLICATE KEY UPDATE
+            si_do_number = VALUES(si_do_number), si_do_date = VALUES(si_do_date),
+            planned_delivery_date = VALUES(planned_delivery_date),
+            project_name = VALUES(project_name), project_site = VALUES(project_site),
+            site_pic_name = VALUES(site_pic_name), site_pic_phone = VALUES(site_pic_phone)
+        `;
+        await connection.query(projectQuery, [
+          id, proj.si_do_number || null, proj.si_do_date || null, proj.planned_delivery_date || null,
+          proj.project_name || null, proj.project_site || null, proj.site_pic_name || null, proj.site_pic_phone || null
+        ]);
       }
 
       // Log Update Activity

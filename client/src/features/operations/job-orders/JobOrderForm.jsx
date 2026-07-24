@@ -16,6 +16,7 @@ export default function JobOrderForm({ initialData = null, isEdit = false }) {
     export_details: {},
     import_details: {},
     trucking_details: { containers: [] },
+    project_details: {},
     job_date: new Date().toISOString().slice(0, 10),
     customer_name: '',
     customer_reference: '',
@@ -50,6 +51,7 @@ export default function JobOrderForm({ initialData = null, isEdit = false }) {
         export_details: initialData.export_details || {},
         import_details: initialData.import_details || {},
         trucking_details: initialData.trucking_details || { containers: [] },
+        project_details: initialData.project_details || {},
         job_date: initialData.job_date ? new Date(initialData.job_date).toISOString().slice(0, 10) : '',
         pickup_date: initialData.pickup_date ? new Date(initialData.pickup_date).toISOString().slice(0, 16) : '',
         delivery_target_date: initialData.delivery_target_date ? new Date(initialData.delivery_target_date).toISOString().slice(0, 16) : '',
@@ -73,12 +75,18 @@ export default function JobOrderForm({ initialData = null, isEdit = false }) {
       if (!window.confirm(confirmMsg)) return;
     }
     
+    if (formData.job_order_type === 'PROJECT' && type !== 'PROJECT' && Object.keys(formData.project_details).length > 0) {
+      const confirmMsg = "Anda telah mengisi Detail Project. Mengubah tipe Job Order dapat menghapus data khusus Project yang telah diisi. Lanjutkan?";
+      if (!window.confirm(confirmMsg)) return;
+    }
+    
     setFormData(prev => ({
       ...prev,
       job_order_type: type,
       export_details: type === 'EXPORT' ? prev.export_details : {},
       import_details: type === 'IMPORT' ? prev.import_details : {},
-      trucking_details: type === 'TRUCKING' ? prev.trucking_details : { containers: [] }
+      trucking_details: type === 'TRUCKING' ? prev.trucking_details : { containers: [] },
+      project_details: type === 'PROJECT' ? prev.project_details : {}
     }));
   };
 
@@ -241,6 +249,17 @@ export default function JobOrderForm({ initialData = null, isEdit = false }) {
         }
       };
     });
+  };
+
+  const handleProjectDetailChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      project_details: {
+        ...prev.project_details,
+        [name]: value
+      }
+    }));
   };
 
   const handleChange = (e) => {
@@ -741,10 +760,59 @@ export default function JobOrderForm({ initialData = null, isEdit = false }) {
         {['PROJECT'].includes(formData.job_order_type) && (
           <Card>
             <div className="p-5 border-b border-slate-800 bg-slate-900/50">
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider">5. Detail {formData.job_order_type}</h3>
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">5. Detail Project</h3>
             </div>
-            <div className="p-8 text-center text-slate-400">
-              <p>Detail khusus {formData.job_order_type} akan ditambahkan pada pengembangan berikutnya.</p>
+            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+              
+              <div className="col-span-full mb-2">
+                <h4 className="text-xs font-bold text-sky-400 uppercase tracking-wider border-b border-slate-800 pb-2">Project Reference</h4>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-slate-300">No. SI / DO</label>
+                <input type="text" name="si_do_number" value={formData.project_details?.si_do_number || ''} onChange={handleProjectDetailChange}
+                  className="bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500" />
+              </div>
+              
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-slate-300">Tanggal SI / DO</label>
+                <input type="date" name="si_do_date" value={formData.project_details?.si_do_date ? formData.project_details.si_do_date.split('T')[0] : ''} onChange={handleProjectDetailChange}
+                  className="bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500 [color-scheme:dark]" />
+              </div>
+              
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-slate-300">Rencana Delivery</label>
+                <input type="date" name="planned_delivery_date" value={formData.project_details?.planned_delivery_date ? formData.project_details.planned_delivery_date.split('T')[0] : ''} onChange={handleProjectDetailChange}
+                  className="bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500 [color-scheme:dark]" />
+              </div>
+
+              <div className="col-span-full mt-4 mb-2">
+                <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-wider border-b border-slate-800 pb-2">Project Information</h4>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-slate-300">Nama Project</label>
+                <input type="text" name="project_name" value={formData.project_details?.project_name || ''} onChange={handleProjectDetailChange}
+                  className="bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500" />
+              </div>
+              
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-slate-300">Lokasi / Site Project</label>
+                <input type="text" name="project_site" value={formData.project_details?.project_site || ''} onChange={handleProjectDetailChange}
+                  className="bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500" />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-slate-300">PIC Site</label>
+                <input type="text" name="site_pic_name" value={formData.project_details?.site_pic_name || ''} onChange={handleProjectDetailChange}
+                  className="bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500" />
+              </div>
+              
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-slate-300">No. Telepon PIC Site</label>
+                <input type="text" name="site_pic_phone" value={formData.project_details?.site_pic_phone || ''} onChange={handleProjectDetailChange}
+                  className="bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500" />
+              </div>
             </div>
           </Card>
         )}
