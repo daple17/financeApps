@@ -122,12 +122,13 @@ export default function Sidebar({ isOpen, onClose }) {
               </>
             )}
 
-            {filteredNavItems.some(i => i.section === 'master_data') && (
+
+            {filteredNavItems.some(i => i.section === 'keuangan') && (
               <>
                 <div className="px-3 pt-4 pb-2 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                  Master Data
+                  Keuangan
                 </div>
-                {filteredNavItems.filter(i => i.section === 'master_data').map((item) => (
+                {filteredNavItems.filter(i => i.section === 'keuangan').map((item) => (
                   <NavLink
                     key={item.path}
                     to={item.path}
@@ -146,13 +147,13 @@ export default function Sidebar({ isOpen, onClose }) {
                 ))}
               </>
             )}
-            
-            {filteredNavItems.some(i => i.section === 'keuangan') && (
+
+            {filteredNavItems.some(i => i.section === 'master_data') && (
               <>
                 <div className="px-3 pt-4 pb-2 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                  Keuangan
+                  Master Data
                 </div>
-                {filteredNavItems.filter(i => i.section === 'keuangan').map((item) => (
+                {filteredNavItems.filter(i => i.section === 'master_data').map((item) => (
                   <NavLink
                     key={item.path}
                     to={item.path}
