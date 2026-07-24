@@ -13,7 +13,12 @@ import {
   Truck,
   Users,
   UserCheck,
-  Briefcase
+  Briefcase,
+  Globe,
+  Anchor,
+  Box,
+  Package,
+  Settings
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -23,9 +28,17 @@ export default function Sidebar({ isOpen, onClose }) {
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, permission: '*' },
     { name: 'Job Order', path: '/job-orders', icon: Truck, permission: 'job_orders.read', section: 'operasional' },
+    { name: 'Operations', path: '/operations', icon: Briefcase, permission: 'operations.read', section: 'operasional' },
     { name: 'Business Partner', path: '/master-data/business-partners', icon: Briefcase, permission: 'master_data.read', section: 'master_data' },
     { name: 'Customer', path: '/master-data/customers', icon: Users, permission: 'master_data.read', section: 'master_data' },
     { name: 'Vendor', path: '/master-data/vendors', icon: UserCheck, permission: 'master_data.read', section: 'master_data' },
+    { name: 'Country', path: '/master-data/countries', icon: Globe, permission: 'master_data.read', section: 'master_data' },
+    { name: 'Port', path: '/master-data/ports', icon: Anchor, permission: 'master_data.read', section: 'master_data' },
+    { name: 'Warehouse', path: '/master-data/warehouses', icon: Building2, permission: 'master_data.read', section: 'master_data' },
+    { name: 'Vehicle Type', path: '/master-data/vehicle-types', icon: Truck, permission: 'master_data.read', section: 'master_data' },
+    { name: 'Container Type', path: '/master-data/container-types', icon: Box, permission: 'master_data.read', section: 'master_data' },
+    { name: 'Cargo Unit', path: '/master-data/cargo-units', icon: Package, permission: 'master_data.read', section: 'master_data' },
+    { name: 'Service Type', path: '/master-data/service-types', icon: Settings, permission: 'master_data.read', section: 'master_data' },
     { name: 'Chart of Accounts', path: '/coa', icon: FolderTree, permission: 'coa.read', section: 'keuangan' },
     { name: 'Transaksi', path: '/transactions', icon: Receipt, permission: 'transactions.read', section: 'keuangan' },
     { name: 'Approval Flow', path: '/approvals', icon: CheckSquare, permission: 'approvals.read', section: 'keuangan' },

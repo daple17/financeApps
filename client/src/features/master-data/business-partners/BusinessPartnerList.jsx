@@ -5,6 +5,7 @@ import { masterDataService } from '../../../services/masterDataService';
 import { Card } from '../../../components/ui/Card';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
+import TableActionMenu from '../../../components/ui/TableActionMenu';
 
 export default function BusinessPartnerList({ defaultRole = null, title = 'Business Partner', icon: Icon = Briefcase }) {
   const navigate = useNavigate();
@@ -236,13 +237,10 @@ export default function BusinessPartnerList({ defaultRole = null, title = 'Busin
                         {partner.status === 'ACTIVE' ? 'Aktif' : 'Non-aktif'}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right space-x-2">
-                      <Button 
-                        variant="secondary"
-                        onClick={() => navigate(`/master-data/business-partners/${partner.id}/edit`)}
-                      >
-                        Edit
-                      </Button>
+                    <td className="px-4 py-3 text-right">
+                      <TableActionMenu
+                        onEdit={() => navigate(`/master-data/business-partners/${partner.id}/edit`)}
+                      />
                     </td>
                   </tr>
                 ))

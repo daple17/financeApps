@@ -7,6 +7,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { Card, CardHeader } from '../../../components/ui/Card';
 import Button from '../../../components/ui/Button';
 import Badge from '../../../components/ui/Badge';
+import { Plus, Truck } from 'lucide-react';
 
 export default function JobOrderDetailPage() {
   const { id } = useParams();
@@ -15,15 +16,23 @@ export default function JobOrderDetailPage() {
   const { hasPermission } = useAuth();
   
   const [jobOrder, setJobOrder] = useState(null);
+  const [operations, setOperations] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('OVERVIEW');
 
   useEffect(() => {
     const fetchJobOrder = async () => {
       try {
-        const res = await api.get(`/job-orders/${id}`);
+        const [res, opsRes] = await Promise.all([
+          api.get(`/job-orders/${id}`),
+          api.get(`/job-orders/${id}/operations`)
+        ]);
+        
         if (res.data.status === 'success') {
           setJobOrder(res.data.data);
+        }
+        if (opsRes.data.status === 'success') {
+          setOperations(opsRes.data.data);
         }
       } catch (err) {
         showError('Gagal memuat rincian Job Order');
@@ -90,7 +99,7 @@ export default function JobOrderDetailPage() {
 
       <div className="border-b border-slate-800">
         <nav className="-mb-px flex space-x-6 overflow-x-auto">
-          {['OVERVIEW', 'OPERATION', 'COST', 'DOCUMENTS', 'ACTIVITY'].map((tab) => (
+          {['OVERVIEW', 'OPERATIONS', 'COST', 'DOCUMENTS', 'ACTIVITY'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -537,13 +546,66 @@ export default function JobOrderDetailPage() {
           </div>
         )}
 
-        {['OPERATION', 'COST', 'DOCUMENTS'].includes(activeTab) && (
+        {['COST', 'DOCUMENTS'].includes(activeTab) && (
           <Card>
             <div className="p-12 text-center">
               <h3 className="text-lg font-medium text-white mb-2">Segera Hadir</h3>
               <p className="text-slate-400 text-sm">Fitur {activeTab.charAt(0) + activeTab.slice(1).toLowerCase()} akan tersedia pada fase berikutnya.</p>
             </div>
           </Card>
+        )}
+
+        {activeTab === 'OPERATIONS' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold text-white">Daftar Operations</h3>
+              <Button onClick={() => navigate(`/operations/create?jobOrderId=${id}`)}>
+                <Plus className="w-4 h-4 mr-2" /> Create Operation
+              </Button>
+            </div>
+
+            {operations.length === 0 ? (
+              <div className="text-center py-12 bg-slate-900 rounded-2xl border border-slate-800">
+                <div className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Truck className="w-6 h-6 text-slate-400" />
+                </div>
+                <h3 className="text-sm font-medium text-slate-300">Belum ada Operation</h3>
+                <p className="text-xs text-slate-500 mt-1">Buat operation baru untuk memulai eksekusi Job Order ini.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {operations.map((op) => (
+                  <Card key={op.id} className="cursor-pointer hover:border-sky-500/50 transition-colors" onClick={() => navigate(`/operations/${op.id}`)}>
+                    <div className="p-4">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <span className="text-sky-400 font-medium text-sm">{op.operation_no}</span>
+                          <div className="text-xs text-slate-500 mt-0.5">{op.operation_date ? new Date(op.operation_date).toLocaleDateString('id-ID') : '-'}</div>
+                        </div>
+                        <Badge variant={
+                          op.status === 'COMPLETED' ? 'success' :
+                          op.status === 'IN_PROGRESS' ? 'primary' :
+                          op.status === 'CANCELLED' ? 'danger' : 'warning'
+                        }>
+                          {op.status}
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <span className="text-slate-500 block mb-0.5">PIC</span>
+                          <span className="text-slate-300">{op.pic_name || '-'}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 block mb-0.5">Qty Execution</span>
+                          <span className="text-slate-300">{op.execution_quantity || 'Full'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
         )}
 
         {activeTab === 'ACTIVITY' && (

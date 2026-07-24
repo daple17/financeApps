@@ -47,18 +47,38 @@ export default function JobOrderForm({ initialData = null, isEdit = false }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [customers, setCustomers] = useState([]);
   const [customerContacts, setCustomerContacts] = useState([]);
+  const [serviceTypes, setServiceTypes] = useState([]);
+  const [cargoUnits, setCargoUnits] = useState([]);
+  const [vehicleTypes, setVehicleTypes] = useState([]);
+  const [containerTypes, setContainerTypes] = useState([]);
+  const [ports, setPorts] = useState([]);
+  const [warehouses, setWarehouses] = useState([]);
 
-  // Fetch Customers from Master Data
+  // Fetch Master Data
   useEffect(() => {
-    const fetchCustomers = async () => {
+    const fetchMasterData = async () => {
       try {
-        const data = await masterDataService.getAllBusinessPartners({ role: 'CUSTOMER', status: 'ACTIVE' });
-        setCustomers(data);
+        const [custData, svcData, unitData, vehData, contData, portData, whData] = await Promise.all([
+          masterDataService.getAllBusinessPartners({ role: 'CUSTOMER', status: 'ACTIVE' }),
+          masterDataService.getServiceTypes({ status: 'ACTIVE' }),
+          masterDataService.getCargoUnits({ status: 'ACTIVE' }),
+          masterDataService.getVehicleTypes({ status: 'ACTIVE' }),
+          masterDataService.getContainerTypes({ status: 'ACTIVE' }),
+          masterDataService.getPorts({ status: 'ACTIVE' }),
+          masterDataService.getWarehouses({ status: 'ACTIVE' })
+        ]);
+        setCustomers(custData);
+        setServiceTypes(svcData);
+        setCargoUnits(unitData);
+        setVehicleTypes(vehData);
+        setContainerTypes(contData);
+        setPorts(portData);
+        setWarehouses(whData);
       } catch (err) {
-        console.error('Failed to load customers', err);
+        console.error('Failed to load master data', err);
       }
     };
-    fetchCustomers();
+    fetchMasterData();
   }, []);
 
   useEffect(() => {
@@ -74,7 +94,11 @@ export default function JobOrderForm({ initialData = null, isEdit = false }) {
         pickup_date: initialData.pickup_date ? new Date(initialData.pickup_date).toISOString().slice(0, 16) : '',
         delivery_target_date: initialData.delivery_target_date ? new Date(initialData.delivery_target_date).toISOString().slice(0, 16) : '',
         customer_id: initialData.customer_id || '',
-        customer_contact_id: initialData.customer_contact_id || ''
+        customer_contact_id: initialData.customer_contact_id || '',
+        pickup_location_type: initialData.pickup_location_type || 'CUSTOM',
+        pickup_reference_id: initialData.pickup_reference_id || '',
+        delivery_location_type: initialData.delivery_location_type || 'CUSTOM',
+        delivery_reference_id: initialData.delivery_reference_id || ''
       });
       
       // Load contacts if customer_id is present
@@ -106,10 +130,24 @@ export default function JobOrderForm({ initialData = null, isEdit = false }) {
       const confirmMsg = "Anda telah mengisi Detail Project. Mengubah tipe Job Order dapat menghapus data khusus Project yang telah diisi. Lanjutkan?";
       if (!window.confirm(confirmMsg)) return;
     }
+
+    // Validate if current service type is still compatible
+    let updatedServiceType = formData.service_type;
+    let updatedServiceTypeId = formData.service_type_id;
+    if (formData.service_type_id) {
+      const currentService = serviceTypes.find(s => s.id === Number(formData.service_type_id));
+      if (currentService && currentService.applicable_job_types?.length && !currentService.applicable_job_types.includes(type)) {
+        updatedServiceType = '';
+        updatedServiceTypeId = '';
+        showError('Service Type dihapus karena tidak sesuai dengan tipe Job Order yang baru.');
+      }
+    }
     
     setFormData(prev => ({
       ...prev,
       job_order_type: type,
+      service_type: updatedServiceType,
+      service_type_id: updatedServiceTypeId,
       export_details: type === 'EXPORT' ? prev.export_details : {},
       import_details: type === 'IMPORT' ? prev.import_details : {},
       trucking_details: type === 'TRUCKING' ? prev.trucking_details : { containers: [] },
@@ -321,6 +359,65 @@ export default function JobOrderForm({ initialData = null, isEdit = false }) {
         customer_pic: selectedContact ? selectedContact.name : '',
         customer_phone: selectedContact ? (selectedContact.phone || selectedContact.email || '') : ''
       }));
+    } else if (name === 'service_type_id') {
+      const selected = serviceTypes.find(s => s.id === Number(value));
+      setFormData(prev => ({
+        ...prev,
+        service_type_id: value,
+        service_type: selected ? selected.name : ''
+      }));
+    } else if (name === 'cargo_unit_id') {
+      const selected = cargoUnits.find(u => u.id === Number(value));
+      setFormData(prev => ({
+        ...prev,
+        cargo_unit_id: value,
+        cargo_unit: selected ? selected.name : ''
+      }));
+    } else if (name === 'vehicle_type_id') {
+      const selected = vehicleTypes.find(v => v.id === Number(value));
+      setFormData(prev => ({
+        ...prev,
+        vehicle_type_id: value,
+        vehicle_type_requirement: selected ? selected.name : ''
+      }));
+    } else if (name === 'pickup_location_type') {
+      setFormData(prev => ({
+        ...prev,
+        pickup_location_type: value,
+        pickup_reference_id: '',
+        pickup_location: '',
+        pickup_address: ''
+      }));
+    } else if (name === 'delivery_location_type') {
+      setFormData(prev => ({
+        ...prev,
+        delivery_location_type: value,
+        delivery_reference_id: '',
+        delivery_location: '',
+        delivery_address: ''
+      }));
+    } else if (name === 'pickup_reference_id') {
+      const isPort = formData.pickup_location_type === 'PORT';
+      const selected = isPort 
+        ? ports.find(p => p.id === Number(value)) 
+        : warehouses.find(w => w.id === Number(value));
+      setFormData(prev => ({
+        ...prev,
+        pickup_reference_id: value,
+        pickup_location: selected ? selected.name : '',
+        pickup_address: selected ? selected.address : ''
+      }));
+    } else if (name === 'delivery_reference_id') {
+      const isPort = formData.delivery_location_type === 'PORT';
+      const selected = isPort 
+        ? ports.find(p => p.id === Number(value)) 
+        : warehouses.find(w => w.id === Number(value));
+      setFormData(prev => ({
+        ...prev,
+        delivery_reference_id: value,
+        delivery_location: selected ? selected.name : '',
+        delivery_address: selected ? selected.address : ''
+      }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
@@ -440,13 +537,16 @@ export default function JobOrderForm({ initialData = null, isEdit = false }) {
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium text-slate-300">Jenis Layanan</label>
               <select className="bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500"
-                name="service_type" value={formData.service_type} onChange={handleChange} required>
+                name="service_type_id" value={formData.service_type_id || ''} onChange={handleChange} required>
                 <option value="">Pilih Layanan</option>
-                <option value="Trucking">Trucking</option>
-                <option value="Delivery">Delivery</option>
-                <option value="Pickup">Pickup</option>
-                <option value="Distribution">Distribution</option>
-                <option value="Other">Other</option>
+                {formData.service_type_id && !serviceTypes.some(s => s.id === Number(formData.service_type_id)) && (
+                  <option value={formData.service_type_id}>{formData.service_type} (Inactive)</option>
+                )}
+                {serviceTypes
+                  .filter(s => !formData.job_order_type || !s.applicable_job_types?.length || s.applicable_job_types.includes(formData.job_order_type))
+                  .map(s => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -460,26 +560,84 @@ export default function JobOrderForm({ initialData = null, isEdit = false }) {
           <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-4">
               <h4 className="text-xs font-semibold text-sky-400 uppercase tracking-wider border-b border-slate-800 pb-2">Lokasi Pickup</h4>
-              <Input label="Nama Lokasi Pickup" name="pickup_location" value={formData.pickup_location} onChange={handleChange} required />
+              
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-slate-300">Tipe Lokasi</label>
+                <select className="bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  name="pickup_location_type" value={formData.pickup_location_type || 'CUSTOM'} onChange={handleChange}>
+                  <option value="PORT">Port</option>
+                  <option value="WAREHOUSE">Warehouse</option>
+                  <option value="CUSTOM">Custom</option>
+                </select>
+              </div>
+
+              {formData.pickup_location_type !== 'CUSTOM' && (
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-medium text-slate-300">Pilih {formData.pickup_location_type === 'PORT' ? 'Port' : 'Warehouse'}</label>
+                  <select className="bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    name="pickup_reference_id" value={formData.pickup_reference_id || ''} onChange={handleChange}>
+                    <option value="">Pilih Lokasi</option>
+                    {formData.pickup_reference_id && !(formData.pickup_location_type === 'PORT' ? ports : warehouses).some(l => l.id === Number(formData.pickup_reference_id)) && (
+                      <option value={formData.pickup_reference_id}>{formData.pickup_location} (Inactive)</option>
+                    )}
+                    {(formData.pickup_location_type === 'PORT' ? ports : warehouses).map(l => (
+                      <option key={l.id} value={l.id}>{l.code} - {l.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <Input label="Nama Lokasi Pickup" name="pickup_location" value={formData.pickup_location || ''} onChange={handleChange} required disabled={formData.pickup_location_type !== 'CUSTOM' && !!formData.pickup_reference_id} />
               <Input label="Jadwal Pickup" type="datetime-local" name="pickup_date" value={formData.pickup_date} onChange={handleChange} required />
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-medium text-slate-300">Alamat Pickup</label>
-                <textarea rows="3" name="pickup_address" value={formData.pickup_address} onChange={handleChange}
-                  className="bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500"></textarea>
+                <textarea rows="3" name="pickup_address" value={formData.pickup_address || ''} onChange={handleChange}
+                  className="bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  disabled={formData.pickup_location_type !== 'CUSTOM' && !!formData.pickup_reference_id}
+                ></textarea>
               </div>
             </div>
             
             <div className="space-y-4">
               <h4 className="text-xs font-semibold text-emerald-400 uppercase tracking-wider border-b border-slate-800 pb-2">Lokasi Tujuan</h4>
-              <Input label="Nama Lokasi Tujuan" name="delivery_location" value={formData.delivery_location} onChange={handleChange} required />
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-slate-300">Tipe Lokasi</label>
+                <select className="bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  name="delivery_location_type" value={formData.delivery_location_type || 'CUSTOM'} onChange={handleChange}>
+                  <option value="PORT">Port</option>
+                  <option value="WAREHOUSE">Warehouse</option>
+                  <option value="CUSTOM">Custom</option>
+                </select>
+              </div>
+
+              {formData.delivery_location_type !== 'CUSTOM' && (
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-medium text-slate-300">Pilih {formData.delivery_location_type === 'PORT' ? 'Port' : 'Warehouse'}</label>
+                  <select className="bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    name="delivery_reference_id" value={formData.delivery_reference_id || ''} onChange={handleChange}>
+                    <option value="">Pilih Lokasi</option>
+                    {formData.delivery_reference_id && !(formData.delivery_location_type === 'PORT' ? ports : warehouses).some(l => l.id === Number(formData.delivery_reference_id)) && (
+                      <option value={formData.delivery_reference_id}>{formData.delivery_location} (Inactive)</option>
+                    )}
+                    {(formData.delivery_location_type === 'PORT' ? ports : warehouses).map(l => (
+                      <option key={l.id} value={l.id}>{l.code} - {l.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <Input label="Nama Lokasi Tujuan" name="delivery_location" value={formData.delivery_location || ''} onChange={handleChange} required disabled={formData.delivery_location_type !== 'CUSTOM' && !!formData.delivery_reference_id} />
               <div className="flex flex-col">
                 <Input label="Target Delivery" type="datetime-local" name="delivery_target_date" value={formData.delivery_target_date} onChange={handleChange} required />
                 <p className="text-[10px] text-slate-500 mt-1">Target penyelesaian/pengiriman sesuai komitmen pekerjaan.</p>
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-medium text-slate-300">Alamat Tujuan</label>
-                <textarea rows="3" name="delivery_address" value={formData.delivery_address} onChange={handleChange}
-                  className="bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500"></textarea>
+                <textarea rows="3" name="delivery_address" value={formData.delivery_address || ''} onChange={handleChange}
+                  className="bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  disabled={formData.delivery_location_type !== 'CUSTOM' && !!formData.delivery_reference_id}
+                ></textarea>
               </div>
             </div>
           </div>
@@ -500,16 +658,14 @@ export default function JobOrderForm({ initialData = null, isEdit = false }) {
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium text-slate-300">Unit</label>
               <select className="bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500"
-                name="cargo_unit" value={formData.cargo_unit} onChange={handleChange}>
+                name="cargo_unit_id" value={formData.cargo_unit_id || ''} onChange={handleChange}>
                 <option value="">Pilih Unit</option>
-                <option value="PCS">PCS</option>
-                <option value="BOX">BOX</option>
-                <option value="PALLET">PALLET</option>
-                <option value="CARTON">CARTON</option>
-                <option value="KG">KG</option>
-                <option value="TON">TON</option>
-                <option value="CBM">CBM</option>
-                <option value="OTHER">OTHER</option>
+                {formData.cargo_unit_id && !cargoUnits.some(u => u.id === Number(formData.cargo_unit_id)) && (
+                  <option value={formData.cargo_unit_id}>{formData.cargo_unit} (Inactive)</option>
+                )}
+                {cargoUnits.map(u => (
+                  <option key={u.id} value={u.id}>{u.name}</option>
+                ))}
               </select>
             </div>
             
@@ -527,17 +683,14 @@ export default function JobOrderForm({ initialData = null, isEdit = false }) {
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium text-slate-300">Jenis Kendaraan</label>
               <select className="bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500"
-                name="vehicle_type_requirement" value={formData.vehicle_type_requirement} onChange={handleChange}>
-                <option value="">Pilih Jenis</option>
-                <option value="Pickup">Pickup</option>
-                <option value="Blind Van">Blind Van</option>
-                <option value="CDE">CDE</option>
-                <option value="CDD">CDD</option>
-                <option value="CDD Long">CDD Long</option>
-                <option value="Fuso">Fuso</option>
-                <option value="Tronton">Tronton</option>
-                <option value="Trailer">Trailer</option>
-                <option value="Other">Other</option>
+                name="vehicle_type_id" value={formData.vehicle_type_id || ''} onChange={handleChange}>
+                <option value="">Pilih Kendaraan</option>
+                {formData.vehicle_type_id && !vehicleTypes.some(v => v.id === Number(formData.vehicle_type_id)) && (
+                  <option value={formData.vehicle_type_id}>{formData.vehicle_type_requirement} (Inactive)</option>
+                )}
+                {vehicleTypes.map(v => (
+                  <option key={v.id} value={v.id}>{v.name}</option>
+                ))}
               </select>
             </div>
             <Input label="Jumlah Kendaraan" type="number" name="vehicle_quantity" value={formData.vehicle_quantity} onChange={handleChange} />
@@ -789,16 +942,17 @@ export default function JobOrderForm({ initialData = null, isEdit = false }) {
                             <label className="text-xs font-medium text-slate-400">Container Type</label>
                             <select 
                               className="bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-2 w-full focus:outline-none focus:border-sky-500"
-                              value={container.type} 
-                              onChange={(e) => handleTruckingContainerChange(idx, 'type', e.target.value)}
+                              value={container.type_id || ''} 
+                              onChange={(e) => {
+                                const selected = containerTypes.find(c => c.id === Number(e.target.value));
+                                handleTruckingContainerChange(idx, 'type_id', e.target.value);
+                                handleTruckingContainerChange(idx, 'type', selected ? selected.name : '');
+                              }}
                             >
                               <option value="">Pilih Tipe</option>
-                              <option value="20STD">20' Standard</option>
-                              <option value="40STD">40' Standard</option>
-                              <option value="40HC">40' High Cube</option>
-                              <option value="45HC">45' High Cube</option>
-                              <option value="OT">Open Top</option>
-                              <option value="FR">Flat Rack</option>
+                              {containerTypes.map(c => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                              ))}
                             </select>
                           </div>
                           

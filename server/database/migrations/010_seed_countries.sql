@@ -1,0 +1,28 @@
+-- Seed global countries
+
+INSERT IGNORE INTO countries (country_code, country_name, iso2, iso3, phone_code) VALUES
+('ID', 'Indonesia', 'ID', 'IDN', '+62'),
+('SG', 'Singapore', 'SG', 'SGP', '+65'),
+('MY', 'Malaysia', 'MY', 'MYS', '+60'),
+('TH', 'Thailand', 'TH', 'THA', '+66'),
+('VN', 'Vietnam', 'VN', 'VNM', '+84'),
+('PH', 'Philippines', 'PH', 'PHL', '+63'),
+('CN', 'China', 'CN', 'CHN', '+86'),
+('JP', 'Japan', 'JP', 'JPN', '+81'),
+('KR', 'South Korea', 'KR', 'KOR', '+82'),
+('IN', 'India', 'IN', 'IND', '+91'),
+('US', 'United States', 'US', 'USA', '+1'),
+('GB', 'United Kingdom', 'GB', 'GBR', '+44'),
+('DE', 'Germany', 'DE', 'DEU', '+49'),
+('AU', 'Australia', 'AU', 'AUS', '+61'),
+('NL', 'Netherlands', 'NL', 'NLD', '+31'),
+('TW', 'Taiwan', 'TW', 'TWN', '+886'),
+('HK', 'Hong Kong', 'HK', 'HKG', '+852'),
+('AE', 'United Arab Emirates', 'AE', 'ARE', '+971'),
+('SA', 'Saudi Arabia', 'SA', 'SAU', '+966'),
+('FR', 'France', 'FR', 'FRA', '+33'),
+('IT', 'Italy', 'IT', 'ITA', '+39'),
+('CA', 'Canada', 'CA', 'CAN', '+1'),
+('BR', 'Brazil', 'BR', 'BRA', '+55'),
+('ZA', 'South Africa', 'ZA', 'ZAF', '+27'),
+('NZ', 'New Zealand', 'NZ', 'NZL', '+64');

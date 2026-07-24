@@ -48,16 +48,16 @@ class JobOrderModel {
           job_order_number, job_date, job_order_type,
           customer_id, customer_contact_id,
           customer_name, customer_reference, customer_pic, customer_phone,
-          service_type,
-          pickup_location, pickup_address, pickup_date,
-          delivery_location, delivery_address, delivery_target_date,
-          cargo_type, cargo_description, cargo_quantity, cargo_unit, cargo_weight, cargo_volume,
-          vehicle_type_requirement, vehicle_quantity,
+          service_type, service_type_id,
+          pickup_location_type, pickup_reference_id, pickup_location, pickup_address, pickup_date,
+          delivery_location_type, delivery_reference_id, delivery_location, delivery_address, delivery_target_date,
+          cargo_type, cargo_description, cargo_quantity, cargo_unit, cargo_unit_id, cargo_weight, cargo_volume,
+          vehicle_type_requirement, vehicle_type_id, vehicle_quantity,
           special_instruction, internal_notes,
           job_status,
           created_by
         ) VALUES (
-          ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+          ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
         )
       `;
 
@@ -65,11 +65,11 @@ class JobOrderModel {
         jobOrderNumber, data.job_date, data.job_order_type || null,
         data.customer_id || null, data.customer_contact_id || null,
         data.customer_name || null, data.customer_reference || null, data.customer_pic || null, data.customer_phone || null,
-        data.service_type || null,
-        data.pickup_location || null, data.pickup_address || null, data.pickup_date || null,
-        data.delivery_location || null, data.delivery_address || null, data.delivery_target_date || null,
-        data.cargo_type || null, data.cargo_description || null, data.cargo_quantity || null, data.cargo_unit || null, data.cargo_weight || null, data.cargo_volume || null,
-        data.vehicle_type_requirement || null, data.vehicle_quantity || null,
+        data.service_type || null, data.service_type_id || null,
+        data.pickup_location_type || null, data.pickup_reference_id || null, data.pickup_location || null, data.pickup_address || null, data.pickup_date || null,
+        data.delivery_location_type || null, data.delivery_reference_id || null, data.delivery_location || null, data.delivery_address || null, data.delivery_target_date || null,
+        data.cargo_type || null, data.cargo_description || null, data.cargo_quantity || null, data.cargo_unit || null, data.cargo_unit_id || null, data.cargo_weight || null, data.cargo_volume || null,
+        data.vehicle_type_requirement || null, data.vehicle_type_id || null, data.vehicle_quantity || null,
         data.special_instruction || null, data.internal_notes || null,
         data.job_status || 'DRAFT',
         userId
@@ -139,10 +139,10 @@ class JobOrderModel {
 
         if (trk.party_volume_type === 'FCL' && Array.isArray(trk.containers) && trk.containers.length > 0) {
           const containerData = trk.containers.map(c => [
-            jobOrderId, c.type, c.quantity || 1
+            jobOrderId, c.type || '', c.type_id || null, c.quantity || 1
           ]);
           const containerQuery = `
-            INSERT INTO trucking_containers (job_order_id, container_type, quantity)
+            INSERT INTO trucking_containers (job_order_id, container_type, container_type_id, quantity)
             VALUES ?
           `;
           await connection.query(containerQuery, [containerData]);
@@ -196,6 +196,9 @@ class JobOrderModel {
         j.*,
         u.name AS created_by_name,
         COALESCE(bp.partner_name, j.customer_name) AS display_customer_name,
+        COALESCE(st.name, j.service_type) AS display_service_type,
+        COALESCE(cu.name, j.cargo_unit) AS display_cargo_unit,
+        COALESCE(vt.name, j.vehicle_type_requirement) AS display_vehicle_type,
         ed.bl_number AS export_bl_number, ed.si_do_number AS export_si_number, ed.vessel AS export_vessel, ed.eta_date AS export_eta, ed.etd_date AS export_etd, ed.planned_delivery_date AS export_planned,
         imp.bl_number AS import_bl_number, imp.do_number AS import_do_number, imp.vessel AS import_vessel, imp.eta_date AS import_eta, imp.planned_delivery_date AS import_planned,
         trk.bl_number AS trucking_bl_number, trk.si_do_number AS trucking_si_do_number, trk.vessel AS trucking_vessel, trk.planned_delivery_date AS trucking_planned,
@@ -203,6 +206,9 @@ class JobOrderModel {
       FROM job_orders j
       JOIN users u ON j.created_by = u.id
       LEFT JOIN business_partners bp ON j.customer_id = bp.id
+      LEFT JOIN service_types st ON j.service_type_id = st.id
+      LEFT JOIN cargo_units cu ON j.cargo_unit_id = cu.id
+      LEFT JOIN vehicle_types vt ON j.vehicle_type_id = vt.id
       LEFT JOIN export_details ed ON j.id = ed.job_order_id
       LEFT JOIN import_details imp ON j.id = imp.job_order_id
       LEFT JOIN trucking_details trk ON j.id = trk.job_order_id
@@ -244,7 +250,7 @@ class JobOrderModel {
         import_bl_number, import_do_number, import_vessel, import_eta, import_planned,
         trucking_bl_number, trucking_si_do_number, trucking_vessel, trucking_planned,
         project_si_do_number, project_planned,
-        display_customer_name,
+        display_customer_name, display_service_type, display_cargo_unit, display_vehicle_type,
         ...job
       } = row;
       
@@ -359,12 +365,18 @@ class JobOrderModel {
         up.name AS updated_by_name,
         COALESCE(bp.partner_name, j.customer_name) AS display_customer_name,
         bpc.name AS display_customer_pic,
-        bpc.phone AS display_customer_phone
+        bpc.phone AS display_customer_phone,
+        COALESCE(st.name, j.service_type) AS display_service_type,
+        COALESCE(cu.name, j.cargo_unit) AS display_cargo_unit,
+        COALESCE(vt.name, j.vehicle_type_requirement) AS display_vehicle_type
       FROM job_orders j
       JOIN users u ON j.created_by = u.id
       LEFT JOIN users up ON j.updated_by = up.id
       LEFT JOIN business_partners bp ON j.customer_id = bp.id
       LEFT JOIN business_partner_contacts bpc ON j.customer_contact_id = bpc.id
+      LEFT JOIN service_types st ON j.service_type_id = st.id
+      LEFT JOIN cargo_units cu ON j.cargo_unit_id = cu.id
+      LEFT JOIN vehicle_types vt ON j.vehicle_type_id = vt.id
       WHERE j.id = ?
     `;
     const [rows] = await db.query(query, [id]);
@@ -376,10 +388,16 @@ class JobOrderModel {
     if (jobOrder.display_customer_name) jobOrder.customer_name = jobOrder.display_customer_name;
     if (jobOrder.display_customer_pic) jobOrder.customer_pic = jobOrder.display_customer_pic;
     if (jobOrder.display_customer_phone) jobOrder.customer_phone = jobOrder.display_customer_phone;
+    if (jobOrder.display_service_type) jobOrder.service_type = jobOrder.display_service_type;
+    if (jobOrder.display_cargo_unit) jobOrder.cargo_unit = jobOrder.display_cargo_unit;
+    if (jobOrder.display_vehicle_type) jobOrder.vehicle_type_requirement = jobOrder.display_vehicle_type;
     
     delete jobOrder.display_customer_name;
     delete jobOrder.display_customer_pic;
     delete jobOrder.display_customer_phone;
+    delete jobOrder.display_service_type;
+    delete jobOrder.display_cargo_unit;
+    delete jobOrder.display_vehicle_type;
 
     // Fetch export details if type is EXPORT
     if (jobOrder.job_order_type === 'EXPORT') {
@@ -407,7 +425,16 @@ class JobOrderModel {
         jobOrder.trucking_details = truckingRows[0];
         
         // Fetch containers
-        const containersQuery = `SELECT container_type as type, quantity FROM trucking_containers WHERE job_order_id = ? ORDER BY id ASC`;
+        const containersQuery = `
+          SELECT 
+            COALESCE(ct.code, tc.container_type) as type, 
+            COALESCE(ct.id, tc.container_type_id) as type_id,
+            tc.quantity 
+          FROM trucking_containers tc
+          LEFT JOIN container_types ct ON tc.container_type_id = ct.id
+          WHERE tc.job_order_id = ? 
+          ORDER BY tc.id ASC
+        `;
         const [containerRows] = await db.query(containersQuery, [id]);
         jobOrder.trucking_details.containers = containerRows;
       }
@@ -459,11 +486,11 @@ class JobOrderModel {
           job_date = ?, job_order_type = ?,
           customer_id = ?, customer_contact_id = ?,
           customer_name = ?, customer_reference = ?, customer_pic = ?, customer_phone = ?,
-          service_type = ?,
-          pickup_location = ?, pickup_address = ?, pickup_date = ?,
-          delivery_location = ?, delivery_address = ?, delivery_target_date = ?,
-          cargo_type = ?, cargo_description = ?, cargo_quantity = ?, cargo_unit = ?, cargo_weight = ?, cargo_volume = ?,
-          vehicle_type_requirement = ?, vehicle_quantity = ?,
+          service_type = ?, service_type_id = ?,
+          pickup_location_type = ?, pickup_reference_id = ?, pickup_location = ?, pickup_address = ?, pickup_date = ?,
+          delivery_location_type = ?, delivery_reference_id = ?, delivery_location = ?, delivery_address = ?, delivery_target_date = ?,
+          cargo_type = ?, cargo_description = ?, cargo_quantity = ?, cargo_unit = ?, cargo_unit_id = ?, cargo_weight = ?, cargo_volume = ?,
+          vehicle_type_requirement = ?, vehicle_type_id = ?, vehicle_quantity = ?,
           special_instruction = ?, internal_notes = ?,
           job_status = ?,
           updated_by = ?
@@ -474,11 +501,11 @@ class JobOrderModel {
         data.job_date, data.job_order_type || null,
         data.customer_id || null, data.customer_contact_id || null,
         data.customer_name || null, data.customer_reference || null, data.customer_pic || null, data.customer_phone || null,
-        data.service_type || null,
-        data.pickup_location || null, data.pickup_address || null, data.pickup_date || null,
-        data.delivery_location || null, data.delivery_address || null, data.delivery_target_date || null,
-        data.cargo_type || null, data.cargo_description || null, data.cargo_quantity || null, data.cargo_unit || null, data.cargo_weight || null, data.cargo_volume || null,
-        data.vehicle_type_requirement || null, data.vehicle_quantity || null,
+        data.service_type || null, data.service_type_id || null,
+        data.pickup_location_type || null, data.pickup_reference_id || null, data.pickup_location || null, data.pickup_address || null, data.pickup_date || null,
+        data.delivery_location_type || null, data.delivery_reference_id || null, data.delivery_location || null, data.delivery_address || null, data.delivery_target_date || null,
+        data.cargo_type || null, data.cargo_description || null, data.cargo_quantity || null, data.cargo_unit || null, data.cargo_unit_id || null, data.cargo_weight || null, data.cargo_volume || null,
+        data.vehicle_type_requirement || null, data.vehicle_type_id || null, data.vehicle_quantity || null,
         data.special_instruction || null, data.internal_notes || null,
         data.job_status || currentStatus,
         userId,
@@ -586,10 +613,10 @@ class JobOrderModel {
         
         if (trk.party_volume_type === 'FCL' && Array.isArray(trk.containers) && trk.containers.length > 0) {
           const containerData = trk.containers.map(c => [
-            id, c.type, c.quantity || 1
+            id, c.type || '', c.type_id || null, c.quantity || 1
           ]);
           const containerQuery = `
-            INSERT INTO trucking_containers (job_order_id, container_type, quantity)
+            INSERT INTO trucking_containers (job_order_id, container_type, container_type_id, quantity)
             VALUES ?
           `;
           await connection.query(containerQuery, [containerData]);

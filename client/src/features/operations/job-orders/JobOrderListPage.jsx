@@ -7,6 +7,7 @@ import { Card, CardHeader } from '../../../components/ui/Card';
 import Button from '../../../components/ui/Button';
 import Badge from '../../../components/ui/Badge';
 import Input from '../../../components/ui/Input';
+import TableActionMenu from '../../../components/ui/TableActionMenu';
 
 export default function JobOrderListPage() {
   const [jobOrders, setJobOrders] = useState([]);
@@ -19,9 +20,6 @@ export default function JobOrderListPage() {
   const [showAdvancedFilter, setShowAdvancedFilter] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  
-  const [activeDropdown, setActiveDropdown] = useState(null);
-  const dropdownRef = useRef(null);
 
   const navigate = useNavigate();
   const { showSuccess, showError } = useToast();
@@ -53,16 +51,6 @@ export default function JobOrderListPage() {
   useEffect(() => {
     fetchJobOrders();
   }, [search, statusFilter, typeFilter, startDate, endDate]);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setActiveDropdown(null);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   const formatCompactDate = (dateStr) => {
     if (!dateStr) return null;
@@ -474,41 +462,10 @@ export default function JobOrderListPage() {
                       {getStatusBadge(job.job_status)}
                     </td>
                     <td className="py-3 px-4 text-center align-top relative">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setActiveDropdown(activeDropdown === job.id ? null : job.id);
-                        }}
-                        className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-700 transition"
-                      >
-                        <MoreVertical className="w-5 h-5" />
-                      </button>
-                      
-                      {activeDropdown === job.id && (
-                        <div 
-                          ref={dropdownRef}
-                          className="absolute right-8 top-1 mt-1 w-40 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-50 overflow-hidden"
-                        >
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/job-orders/${job.id}`);
-                            }}
-                            className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2"
-                          >
-                            <Eye className="w-4 h-4" /> Lihat Detail
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/job-orders/${job.id}/edit`);
-                            }}
-                            className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2"
-                          >
-                            <Edit2 className="w-4 h-4" /> Edit
-                          </button>
-                        </div>
-                      )}
+                      <TableActionMenu
+                        onView={() => navigate(`/job-orders/${job.id}`)}
+                        onEdit={() => navigate(`/job-orders/${job.id}/edit`)}
+                      />
                     </td>
                   </tr>
                 ))}
