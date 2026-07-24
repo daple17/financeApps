@@ -204,20 +204,26 @@ export default function BusinessPartnerForm() {
             </div>
             <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
               <Input label="Partner Code" name="partner_code" value={formData.partner_code} onChange={handleChange} required placeholder="Misal: CUST-001" />
-              <Input label="Partner Type" name="partner_type" type="select" value={formData.partner_type} onChange={handleChange}>
-                <option value="COMPANY">Company / PT / CV</option>
-                <option value="INDIVIDUAL">Individual / Perorangan</option>
-              </Input>
+              <div className="flex flex-col gap-1.5 w-full">
+                <label className="text-xs font-medium text-slate-300">Partner Type</label>
+                <select name="partner_type" value={formData.partner_type} onChange={handleChange} className="w-full bg-slate-900/80 border border-slate-700 hover:border-slate-600 text-slate-100 text-sm rounded-xl px-3.5 py-2.5 transition focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/50">
+                  <option value="COMPANY">Company / PT / CV</option>
+                  <option value="INDIVIDUAL">Individual / Perorangan</option>
+                </select>
+              </div>
               
               <div className="md:col-span-2">
                 <Input label="Partner Name (Nama Perusahaan / Individu)" name="partner_name" value={formData.partner_name} onChange={handleChange} required placeholder="Misal: PT Logistik Sukses" />
               </div>
               
               <Input label="Short Name / Alias" name="short_name" value={formData.short_name} onChange={handleChange} placeholder="Misal: LST" />
-              <Input label="Status" name="status" type="select" value={formData.status} onChange={handleChange}>
-                <option value="ACTIVE">Active</option>
-                <option value="INACTIVE">Inactive</option>
-              </Input>
+              <div className="flex flex-col gap-1.5 w-full">
+                <label className="text-xs font-medium text-slate-300">Status</label>
+                <select name="status" value={formData.status} onChange={handleChange} className="w-full bg-slate-900/80 border border-slate-700 hover:border-slate-600 text-slate-100 text-sm rounded-xl px-3.5 py-2.5 transition focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/50">
+                  <option value="ACTIVE">Active</option>
+                  <option value="INACTIVE">Inactive</option>
+                </select>
+              </div>
             </div>
           </Card>
 
@@ -232,8 +238,9 @@ export default function BusinessPartnerForm() {
               <Input label="City" name="city" value={formData.city} onChange={handleChange} />
               <Input label="NPWP" name="npwp" value={formData.npwp} onChange={handleChange} placeholder="Misal: 01.234.567.8-901.000" />
               
-              <div className="md:col-span-2">
-                <Input label="Alamat Lengkap" name="address" type="textarea" value={formData.address} onChange={handleChange} rows="3" />
+              <div className="md:col-span-2 flex flex-col gap-1.5 w-full">
+                <label className="text-xs font-medium text-slate-300">Alamat Lengkap</label>
+                <textarea name="address" value={formData.address} onChange={handleChange} rows="3" className="w-full bg-slate-900/80 border border-slate-700 hover:border-slate-600 text-slate-100 text-sm rounded-xl px-3.5 py-2.5 transition focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/50"></textarea>
               </div>
             </div>
           </Card>
