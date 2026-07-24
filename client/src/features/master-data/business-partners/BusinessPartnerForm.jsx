@@ -19,6 +19,11 @@ export default function BusinessPartnerForm() {
   const navigate = useNavigate();
   const location = useLocation();
   const isEdit = Boolean(id);
+  
+  // Determine context based on route
+  const formContext = location.pathname.includes('/customers') ? 'customer' 
+                    : location.pathname.includes('/vendors') ? 'vendor' 
+                    : 'partner';
 
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
@@ -172,12 +177,12 @@ export default function BusinessPartnerForm() {
           <div>
             <h1 className="text-xl font-bold text-white">
               {isEdit 
-                ? (location.pathname.includes('/customers') ? 'Edit Customer' : location.pathname.includes('/vendors') ? 'Edit Vendor' : 'Edit Business Partner')
-                : (location.pathname.includes('/customers') ? 'Tambah Customer' : location.pathname.includes('/vendors') ? 'Tambah Vendor' : 'Tambah Business Partner')
+                ? (formContext === 'customer' ? 'Edit Customer' : formContext === 'vendor' ? 'Edit Vendor' : 'Edit Business Partner')
+                : (formContext === 'customer' ? 'Tambah Customer' : formContext === 'vendor' ? 'Tambah Vendor' : 'Tambah Business Partner')
               }
             </h1>
             <p className="text-sm text-slate-400">
-              {isEdit ? formData.partner_name : `Buat data ${location.pathname.includes('/customers') ? 'customer' : location.pathname.includes('/vendors') ? 'vendor' : 'partner'} baru`}
+              {isEdit ? formData.partner_name : `Buat data ${formContext === 'customer' ? 'customer' : formContext === 'vendor' ? 'vendor' : 'partner'} baru`}
             </p>
           </div>
         </div>
@@ -199,14 +204,17 @@ export default function BusinessPartnerForm() {
       )}
 
       {/* General Information & Roles */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
+      <div className={`grid grid-cols-1 ${formContext === 'partner' ? 'lg:grid-cols-3' : ''} gap-6`}>
+        <div className={`${formContext === 'partner' ? 'lg:col-span-2' : ''} space-y-6`}>
           <Card>
             <div className="p-5 border-b border-slate-800 bg-slate-900/50">
               <h3 className="text-sm font-bold text-white uppercase tracking-wider">1. General Information</h3>
             </div>
             <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
-              <Input label="Partner Code" name="partner_code" value={formData.partner_code} onChange={handleChange} required placeholder="Misal: CUST-001" />
+              <Input 
+                label={formContext === 'customer' ? 'Customer Code' : formContext === 'vendor' ? 'Vendor Code' : 'Partner Code'} 
+                name="partner_code" value={formData.partner_code} onChange={handleChange} required placeholder="Misal: CUST-001" 
+              />
               <div className="flex flex-col gap-1.5 w-full">
                 <label className="text-xs font-medium text-slate-300">Partner Type</label>
                 <select name="partner_type" value={formData.partner_type} onChange={handleChange} className="w-full bg-slate-900/80 border border-slate-700 hover:border-slate-600 text-slate-100 text-sm rounded-xl px-3.5 py-2.5 transition focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/50">
@@ -216,7 +224,10 @@ export default function BusinessPartnerForm() {
               </div>
               
               <div className="md:col-span-2">
-                <Input label="Partner Name (Nama Perusahaan / Individu)" name="partner_name" value={formData.partner_name} onChange={handleChange} required placeholder="Misal: PT Logistik Sukses" />
+                <Input 
+                  label={formContext === 'customer' ? 'Customer Name' : formContext === 'vendor' ? 'Vendor Name' : 'Partner Name (Nama Perusahaan / Individu)'} 
+                  name="partner_name" value={formData.partner_name} onChange={handleChange} required placeholder="Misal: PT Logistik Sukses" 
+                />
               </div>
               
               <Input label="Short Name / Alias" name="short_name" value={formData.short_name} onChange={handleChange} placeholder="Misal: LST" />
@@ -249,28 +260,30 @@ export default function BusinessPartnerForm() {
           </Card>
         </div>
 
-        {/* Roles Sidebar */}
-        <div className="space-y-6">
-          <Card>
-            <div className="p-5 border-b border-slate-800 bg-slate-900/50">
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider">Roles (Multi-Select)</h3>
-              <p className="text-xs text-slate-400 mt-1">Satu partner dapat memiliki lebih dari satu peran.</p>
-            </div>
-            <div className="p-4 space-y-2">
-              {ROLES.map(role => (
-                <label key={role.id} className="flex items-center gap-3 p-3 rounded-lg border border-slate-700 bg-slate-800/50 cursor-pointer hover:bg-slate-800 transition-colors">
-                  <input
-                    type="checkbox"
-                    className="w-4 h-4 text-sky-500 rounded border-slate-600 bg-slate-900 focus:ring-sky-500"
-                    checked={formData.roles.includes(role.id)}
-                    onChange={() => handleRoleToggle(role.id)}
-                  />
-                  <span className="text-sm font-medium text-slate-200">{role.label}</span>
-                </label>
-              ))}
-            </div>
-          </Card>
-        </div>
+        {/* Roles Sidebar (Only visible in Business Partner context) */}
+        {formContext === 'partner' && (
+          <div className="space-y-6">
+            <Card>
+              <div className="p-5 border-b border-slate-800 bg-slate-900/50">
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Roles (Multi-Select)</h3>
+                <p className="text-xs text-slate-400 mt-1">Satu partner dapat memiliki lebih dari satu peran.</p>
+              </div>
+              <div className="p-4 space-y-2">
+                {ROLES.map(role => (
+                  <label key={role.id} className="flex items-center gap-3 p-3 rounded-lg border border-slate-700 bg-slate-800/50 cursor-pointer hover:bg-slate-800 transition-colors">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 text-sky-500 rounded border-slate-600 bg-slate-900 focus:ring-sky-500"
+                      checked={formData.roles.includes(role.id)}
+                      onChange={() => handleRoleToggle(role.id)}
+                    />
+                    <span className="text-sm font-medium text-slate-200">{role.label}</span>
+                  </label>
+                ))}
+              </div>
+            </Card>
+          </div>
+        )}
       </div>
 
       {/* Contacts Person */}

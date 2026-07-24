@@ -94,7 +94,7 @@ export default function BusinessPartnerList({ defaultRole = null, title = 'Busin
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="p-4 bg-slate-800/50">
-          <div className="text-sm text-slate-400 font-medium mb-1">TOTAL PARTNER</div>
+          <div className="text-sm text-slate-400 font-medium mb-1 uppercase">TOTAL {title}</div>
           <div className="text-2xl font-bold text-white">{summary.total}</div>
         </Card>
         {!defaultRole && (
@@ -109,8 +109,8 @@ export default function BusinessPartnerList({ defaultRole = null, title = 'Busin
             </Card>
           </>
         )}
-        <Card className="p-4 bg-emerald-900/10 border-emerald-500/20">
-          <div className="text-sm text-emerald-400 font-medium mb-1">ACTIVE</div>
+        <Card className="p-4 bg-slate-800/50 border-emerald-500/20">
+          <div className="text-sm text-emerald-400 font-medium mb-1 uppercase">ACTIVE {title}</div>
           <div className="text-2xl font-bold text-white">{summary.active}</div>
         </Card>
       </div>
@@ -162,10 +162,20 @@ export default function BusinessPartnerList({ defaultRole = null, title = 'Busin
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-900/50 border-b border-slate-800">
-                <th className="p-4 text-xs font-semibold text-slate-400 uppercase tracking-wider w-32">Code</th>
-                <th className="p-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Partner Name</th>
-                <th className="p-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Role</th>
-                <th className="p-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">City</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider rounded-tl-xl w-32">
+                  CODE
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  {defaultRole ? `${title} NAME` : 'PARTNER NAME'}
+                </th>
+                {!defaultRole && (
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider w-40">
+                    ROLE
+                  </th>
+                )}
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  CITY
+                </th>
                 <th className="p-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Primary Contact</th>
                 <th className="p-4 text-xs font-semibold text-slate-400 uppercase tracking-wider w-24">Status</th>
                 <th className="p-4 text-xs font-semibold text-slate-400 uppercase tracking-wider text-right w-24">Action</th>
@@ -187,45 +197,46 @@ export default function BusinessPartnerList({ defaultRole = null, title = 'Busin
               ) : (
                 partners.map((partner) => (
                   <tr key={partner.id} className="hover:bg-slate-800/20 transition-colors">
-                    <td className="p-4">
+                    <td className="px-4 py-3">
                       <span className="font-mono text-sm text-sky-400">{partner.partner_code}</span>
                     </td>
-                    <td className="p-4">
-                      <div className="font-medium text-white">{partner.partner_name}</div>
-                      {partner.short_name && <div className="text-xs text-slate-500">{partner.short_name}</div>}
+                    <td className="px-4 py-3 text-sm font-medium text-white">
+                      {partner.partner_name}
                     </td>
-                    <td className="p-4">
-                      <div className="flex flex-wrap gap-1.5">
-                        {partner.roles?.map(role => (
-                          <span key={role} className={`px-2 py-0.5 text-[10px] font-bold rounded border uppercase tracking-wider ${getRoleBadgeColor(role)}`}>
-                            {role.replace('_', ' ')}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="p-4 text-sm text-slate-300">
+                    {!defaultRole && (
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-1.5">
+                          {partner.roles?.map(role => (
+                            <span key={role} className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${getRoleBadgeColor(role)}`}>
+                              {role.replace('_', ' ')}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                    )}
+                    <td className="px-4 py-3 text-sm text-slate-400">
                       {partner.city || '-'}
                     </td>
-                    <td className="p-4">
+                    <td className="px-4 py-3">
                       {partner.primary_contact ? (
-                        <div className="text-sm">
-                          <div className="text-slate-300">{partner.primary_contact.name}</div>
-                          <div className="text-xs text-slate-500">{partner.primary_contact.phone || partner.primary_contact.email || '-'}</div>
+                        <div>
+                          <div className="font-medium text-slate-300 text-sm">{partner.primary_contact.name}</div>
+                          {partner.primary_contact.phone && <div className="text-xs text-slate-500">{partner.primary_contact.phone}</div>}
                         </div>
                       ) : (
-                        <span className="text-sm text-slate-500">-</span>
+                        <span className="text-slate-500 italic text-sm">Tidak ada</span>
                       )}
                     </td>
-                    <td className="p-4">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-lg ${
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
                         partner.status === 'ACTIVE' 
-                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                          : 'bg-slate-500/10 text-slate-400 border border-slate-500/20'
+                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                          : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
                       }`}>
-                        {partner.status}
+                        {partner.status === 'ACTIVE' ? 'Aktif' : 'Non-aktif'}
                       </span>
                     </td>
-                    <td className="p-4 text-right">
+                    <td className="px-4 py-3 text-right space-x-2">
                       <Button 
                         variant="secondary"
                         onClick={() => navigate(`/master-data/business-partners/${partner.id}/edit`)}
