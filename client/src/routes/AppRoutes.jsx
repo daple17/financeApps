@@ -17,6 +17,9 @@ import JobOrderListPage from '../features/operations/job-orders/JobOrderListPage
 import CreateJobOrderPage from '../features/operations/job-orders/CreateJobOrderPage';
 import EditJobOrderPage from '../features/operations/job-orders/EditJobOrderPage';
 import JobOrderDetailPage from '../features/operations/job-orders/JobOrderDetailPage';
+import BusinessPartnerList from '../features/master-data/business-partners/BusinessPartnerList';
+import BusinessPartnerForm from '../features/master-data/business-partners/BusinessPartnerForm';
+import { Briefcase, Users, UserCheck } from 'lucide-react';
 
 export default function AppRoutes() {
   return (
@@ -70,6 +73,23 @@ export default function AppRoutes() {
             
             <Route element={<ProtectedRoute requiredPermission="job_orders.update" />}>
               <Route path="/job-orders/:id/edit" element={<EditJobOrderPage />} />
+            </Route>
+
+            {/* Master Data Routes */}
+            <Route element={<ProtectedRoute requiredPermission="master_data.read" />}>
+              <Route path="/master-data/business-partners" element={<BusinessPartnerList title="Business Partner" icon={Briefcase} />} />
+              <Route path="/master-data/customers" element={<BusinessPartnerList defaultRole="CUSTOMER" title="Customer" icon={Users} />} />
+              <Route path="/master-data/vendors" element={<BusinessPartnerList defaultRole="VENDOR" title="Vendor" icon={UserCheck} />} />
+            </Route>
+            
+            <Route element={<ProtectedRoute requiredPermission="master_data.create" />}>
+              <Route path="/master-data/business-partners/create" element={<BusinessPartnerForm />} />
+              <Route path="/master-data/customers/create" element={<BusinessPartnerForm />} />
+              <Route path="/master-data/vendors/create" element={<BusinessPartnerForm />} />
+            </Route>
+            
+            <Route element={<ProtectedRoute requiredPermission="master_data.update" />}>
+              <Route path="/master-data/business-partners/:id/edit" element={<BusinessPartnerForm />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Edit2 } from 'lucide-react';
 import api from '../../../services/api';
 import { useToast } from '../../../context/ToastContext';
@@ -64,7 +64,15 @@ export default function JobOrderDetailPage() {
               {getStatusBadge(jobOrder.job_status)}
             </h1>
             <p className="text-sm text-slate-400 mt-1">
-              Customer: <span className="font-medium text-slate-200">{jobOrder.customer_name}</span> | 
+              Customer: <span className="font-medium text-slate-200">
+                {jobOrder.customer_id ? (
+                  <Link to={`/master-data/business-partners/${jobOrder.customer_id}/edit`} className="text-sky-400 hover:underline">
+                    {jobOrder.customer_name}
+                  </Link>
+                ) : (
+                  jobOrder.customer_name
+                )}
+              </span> | 
               Tipe: <span className="font-medium text-slate-200 ml-1">{jobOrder.job_order_type || '-'}</span> | 
               Rute: <span className="font-medium text-slate-200 ml-1">{jobOrder.pickup_location || '?'} → {jobOrder.delivery_location || '?'}</span> | 
               Tgl: <span className="font-medium text-slate-200 ml-1">{new Date(jobOrder.job_date).toLocaleDateString('id-ID')}</span>
@@ -114,7 +122,15 @@ export default function JobOrderDetailPage() {
                 </div>
                 <div className="flex justify-between border-b border-slate-800/50 pb-2">
                   <span className="text-slate-400">Customer</span>
-                  <span className="text-white font-medium">{jobOrder.customer_name || '-'}</span>
+                  <span className="text-white font-medium">
+                    {jobOrder.customer_id ? (
+                      <Link to={`/master-data/business-partners/${jobOrder.customer_id}/edit`} className="text-sky-400 hover:underline flex items-center gap-1">
+                        {jobOrder.customer_name}
+                      </Link>
+                    ) : (
+                      jobOrder.customer_name || '-'
+                    )}
+                  </span>
                 </div>
                 <div className="flex justify-between border-b border-slate-800/50 pb-2">
                   <span className="text-slate-400">Cust Ref.</span>
@@ -465,20 +481,9 @@ export default function JobOrderDetailPage() {
                     )}
 
                     {jobOrder.trucking_details.party_volume_type === 'LCL/BB' && (
-                      <div className="pt-2 space-y-1">
-                        <div className="flex justify-between border-b border-slate-800/50 pb-1">
-                          <span className="text-slate-400">Weight</span>
-                          <span className="text-white">{jobOrder.trucking_details.weight ? `${jobOrder.trucking_details.weight} TON` : '-'}</span>
-                        </div>
-                        <div className="flex justify-between border-b border-slate-800/50 pb-1">
-                          <span className="text-slate-400">Volume</span>
-                          <span className="text-white">{jobOrder.trucking_details.volume ? `${jobOrder.trucking_details.volume} CBM` : '-'}</span>
-                        </div>
-                        <div className="flex justify-between border-b border-slate-800/50 pb-1">
-                          <span className="text-slate-400">Quantity</span>
-                          <span className="text-white">
-                            {jobOrder.trucking_details.quantity || '-'} {jobOrder.trucking_details.unit || ''}
-                          </span>
+                      <div className="pt-2">
+                        <div className="bg-slate-800/30 rounded px-3 py-2 text-xs text-slate-400">
+                          Data muatan LCL/BB mengikuti <strong>Informasi Muatan</strong> di panel utama.
                         </div>
                       </div>
                     )}

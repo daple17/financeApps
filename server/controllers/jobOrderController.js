@@ -1,4 +1,5 @@
 const JobOrderModel = require('../models/jobOrderModel');
+const { JOB_ORDER_TYPES, JOB_ORDER_STATUSES, STATUS_TRANSITIONS } = require('../utils/constants');
 
 /**
  * Create a new Job Order
@@ -13,11 +14,12 @@ exports.createJobOrder = async (req, res, next) => {
       return res.status(400).json({ status: 'error', message: 'Tanggal Job Order (job_date) wajib diisi' });
     }
 
-    if (jobData.job_order_type && !['IMPORT', 'EXPORT', 'TRUCKING', 'PROJECT'].includes(jobData.job_order_type)) {
+    const allowedTypes = Object.values(JOB_ORDER_TYPES);
+    if (jobData.job_order_type && !allowedTypes.includes(jobData.job_order_type)) {
       return res.status(400).json({ status: 'error', message: 'Tipe Job Order tidak valid' });
     }
 
-    if (jobData.job_status === 'CONFIRMED') {
+    if (jobData.job_status === JOB_ORDER_STATUSES.CONFIRMED) {
       const requiredFields = [
         'customer_name', 'service_type', 
         'pickup_location', 'pickup_address', 'pickup_date',
@@ -137,9 +139,21 @@ exports.updateJobOrder = async (req, res, next) => {
       });
     }
 
-    // Validation for CONFIRMED
     const futureStatus = jobData.job_status || existingJob.job_status;
-    if (futureStatus === 'CONFIRMED') {
+    const currentStatus = existingJob.job_status;
+
+    if (jobData.job_status && jobData.job_status !== currentStatus) {
+      const allowedNextStatuses = STATUS_TRANSITIONS[currentStatus] || [];
+      if (!allowedNextStatuses.includes(jobData.job_status)) {
+        return res.status(400).json({
+          status: 'error',
+          message: `Transisi status tidak valid. Tidak bisa mengubah status dari ${currentStatus} ke ${jobData.job_status}`
+        });
+      }
+    }
+
+    // Validation for CONFIRMED
+    if (futureStatus === JOB_ORDER_STATUSES.CONFIRMED) {
       const requiredFields = [
         'customer_name', 'service_type', 
         'pickup_location', 'pickup_address', 'pickup_date',
@@ -158,7 +172,8 @@ exports.updateJobOrder = async (req, res, next) => {
       }
     }
 
-    if (jobData.job_order_type && !['IMPORT', 'EXPORT', 'TRUCKING', 'PROJECT'].includes(jobData.job_order_type)) {
+    const allowedTypes = Object.values(JOB_ORDER_TYPES);
+    if (jobData.job_order_type && !allowedTypes.includes(jobData.job_order_type)) {
       return res.status(400).json({ status: 'error', message: 'Tipe Job Order tidak valid' });
     }
 

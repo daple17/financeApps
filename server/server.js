@@ -26,7 +26,7 @@ async function autoMigrate() {
 
     // 2. Run CREATE TABLE IF NOT EXISTS scripts (001, 002, 003, 004)
     const migrationsDir = path.join(__dirname, 'database', 'migrations');
-    const files = ['001_job_orders.sql', '002_export_details.sql', '003_import_details.sql', '004_trucking_details.sql', '006_project_details.sql'];
+    const files = ['001_job_orders.sql', '002_export_details.sql', '003_import_details.sql', '004_trucking_details.sql', '006_project_details.sql', '007_phase1_5_stabilization.sql', '008_phase2_1_business_partners.sql'];
     
     for (let file of files) {
       const filePath = path.join(migrationsDir, file);

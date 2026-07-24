@@ -14,6 +14,7 @@ const reportRoutes = require('./routes/reportRoutes');
 const userRoutes = require('./routes/userRoutes');
 const roleRoutes = require('./routes/roleRoutes');
 const jobOrderRoutes = require('./routes/jobOrderRoutes');
+const businessPartnerRoutes = require('./routes/masterData/businessPartnerRoutes');
 
 const app = express();
 
@@ -38,6 +39,7 @@ app.use('/api/v1/reports', reportRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/roles', roleRoutes);
 app.use('/api/v1/job-orders', jobOrderRoutes);
+app.use('/api/v1/master-data/business-partners', businessPartnerRoutes);
 
 // Health check endpoint
 app.get('/api/v1/health', (req, res) => {

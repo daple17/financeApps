@@ -10,7 +10,10 @@ import {
   X,
   Building2,
   ShieldCheck,
-  Truck
+  Truck,
+  Users,
+  UserCheck,
+  Briefcase
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -20,6 +23,9 @@ export default function Sidebar({ isOpen, onClose }) {
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, permission: '*' },
     { name: 'Job Order', path: '/job-orders', icon: Truck, permission: 'job_orders.read', section: 'operasional' },
+    { name: 'Business Partner', path: '/master-data/business-partners', icon: Briefcase, permission: 'master_data.read', section: 'master_data' },
+    { name: 'Customer', path: '/master-data/customers', icon: Users, permission: 'master_data.read', section: 'master_data' },
+    { name: 'Vendor', path: '/master-data/vendors', icon: UserCheck, permission: 'master_data.read', section: 'master_data' },
     { name: 'Chart of Accounts', path: '/coa', icon: FolderTree, permission: 'coa.read', section: 'keuangan' },
     { name: 'Transaksi', path: '/transactions', icon: Receipt, permission: 'transactions.read', section: 'keuangan' },
     { name: 'Approval Flow', path: '/approvals', icon: CheckSquare, permission: 'approvals.read', section: 'keuangan' },
@@ -97,6 +103,31 @@ export default function Sidebar({ isOpen, onClose }) {
                   Operasional
                 </div>
                 {filteredNavItems.filter(i => i.section === 'operasional').map((item) => (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    onClick={onClose}
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                        isActive
+                          ? 'bg-sky-600/15 text-sky-400 border border-sky-500/30 shadow-sm'
+                          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                      }`
+                    }
+                  >
+                    <item.icon className="w-4 h-4 shrink-0" />
+                    <span>{item.name}</span>
+                  </NavLink>
+                ))}
+              </>
+            )}
+
+            {filteredNavItems.some(i => i.section === 'master_data') && (
+              <>
+                <div className="px-3 pt-4 pb-2 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                  Master Data
+                </div>
+                {filteredNavItems.filter(i => i.section === 'master_data').map((item) => (
                   <NavLink
                     key={item.path}
                     to={item.path}

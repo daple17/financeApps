@@ -3,6 +3,7 @@ import { Save, FileCheck, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../../services/api';
 import { useToast } from '../../../context/ToastContext';
+import { masterDataService } from '../../../services/masterDataService';
 import { Card } from '../../../components/ui/Card';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
@@ -18,6 +19,8 @@ export default function JobOrderForm({ initialData = null, isEdit = false }) {
     trucking_details: { containers: [] },
     project_details: {},
     job_date: new Date().toISOString().slice(0, 10),
+    customer_id: '',
+    customer_contact_id: '',
     customer_name: '',
     customer_reference: '',
     customer_pic: '',
@@ -42,6 +45,21 @@ export default function JobOrderForm({ initialData = null, isEdit = false }) {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [customers, setCustomers] = useState([]);
+  const [customerContacts, setCustomerContacts] = useState([]);
+
+  // Fetch Customers from Master Data
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      try {
+        const data = await masterDataService.getAllBusinessPartners({ role: 'CUSTOMER', status: 'ACTIVE' });
+        setCustomers(data);
+      } catch (err) {
+        console.error('Failed to load customers', err);
+      }
+    };
+    fetchCustomers();
+  }, []);
 
   useEffect(() => {
     if (initialData) {
@@ -55,7 +73,16 @@ export default function JobOrderForm({ initialData = null, isEdit = false }) {
         job_date: initialData.job_date ? new Date(initialData.job_date).toISOString().slice(0, 10) : '',
         pickup_date: initialData.pickup_date ? new Date(initialData.pickup_date).toISOString().slice(0, 16) : '',
         delivery_target_date: initialData.delivery_target_date ? new Date(initialData.delivery_target_date).toISOString().slice(0, 16) : '',
+        customer_id: initialData.customer_id || '',
+        customer_contact_id: initialData.customer_contact_id || ''
       });
+      
+      // Load contacts if customer_id is present
+      if (initialData.customer_id) {
+        masterDataService.getBusinessPartnerById(initialData.customer_id).then(data => {
+          setCustomerContacts(data.contacts || []);
+        }).catch(err => console.error(err));
+      }
     }
   }, [initialData]);
 
@@ -183,22 +210,11 @@ export default function JobOrderForm({ initialData = null, isEdit = false }) {
     }
     
     if (name === 'party_volume_type' && value === 'FCL' && formData.trucking_details.party_volume_type === 'LCL/BB') {
-      const { weight, volume, quantity } = formData.trucking_details;
-      if (weight || volume || quantity) {
-        if (!window.confirm("Data cargo telah diisi. Mengubah Party / Volume ke FCL dapat menghapus data cargo. Lanjutkan?")) {
-          return;
-        }
-      }
-      
       setFormData(prev => ({
         ...prev,
         trucking_details: {
           ...prev.trucking_details,
-          [name]: value,
-          weight: '',
-          volume: '',
-          quantity: '',
-          unit: ''
+          [name]: value
         }
       }));
       return;
@@ -264,7 +280,50 @@ export default function JobOrderForm({ initialData = null, isEdit = false }) {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    if (name === 'customer_id') {
+      const selected = customers.find(c => c.id === Number(value));
+      if (selected) {
+        setFormData(prev => ({
+          ...prev,
+          customer_id: selected.id,
+          customer_name: selected.partner_name,
+          customer_contact_id: '',
+          customer_pic: '',
+          customer_phone: ''
+        }));
+        masterDataService.getBusinessPartnerById(selected.id).then(data => {
+          setCustomerContacts(data.contacts || []);
+          const primary = data.contacts?.find(c => c.is_primary);
+          if (primary) {
+            setFormData(prev => ({
+              ...prev,
+              customer_contact_id: primary.id,
+              customer_pic: primary.name,
+              customer_phone: primary.phone || primary.email || ''
+            }));
+          }
+        });
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          customer_id: '',
+          customer_contact_id: '',
+          customer_name: '', // Let them type
+        }));
+        setCustomerContacts([]);
+      }
+    } else if (name === 'customer_contact_id') {
+      const selectedContact = customerContacts.find(c => c.id === Number(value));
+      setFormData(prev => ({
+        ...prev,
+        customer_contact_id: value,
+        customer_pic: selectedContact ? selectedContact.name : '',
+        customer_phone: selectedContact ? (selectedContact.phone || selectedContact.email || '') : ''
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleSave = async (status) => {
@@ -349,10 +408,34 @@ export default function JobOrderForm({ initialData = null, isEdit = false }) {
           <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
             <Input label="Nomor Job Order" value={isEdit ? initialData.job_order_number : 'Auto Generated'} disabled />
             <Input label="Tanggal Job" type="date" name="job_date" value={formData.job_date} onChange={handleChange} required />
-            <Input label="Customer" name="customer_name" value={formData.customer_name} onChange={handleChange} required />
+            
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-slate-300">Customer (Master Data)</label>
+              <select className="bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                name="customer_id" value={formData.customer_id || ''} onChange={handleChange}>
+                <option value="">-- Ketik Manual --</option>
+                {customers.map(c => (
+                  <option key={c.id} value={c.id}>{c.partner_code} - {c.partner_name}</option>
+                ))}
+              </select>
+            </div>
+            
+            <Input label="Customer Name (Ketik Manual)" name="customer_name" value={formData.customer_name} onChange={handleChange} required disabled={!!formData.customer_id} placeholder="Nama Customer" />
             <Input label="Customer Reference" name="customer_reference" value={formData.customer_reference} onChange={handleChange} />
-            <Input label="PIC Customer" name="customer_pic" value={formData.customer_pic} onChange={handleChange} />
-            <Input label="No. Telepon PIC" name="customer_phone" value={formData.customer_phone} onChange={handleChange} />
+            
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-slate-300">PIC Customer (Master Data)</label>
+              <select className="bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                name="customer_contact_id" value={formData.customer_contact_id || ''} onChange={handleChange} disabled={!formData.customer_id}>
+                <option value="">-- Ketik Manual --</option>
+                {customerContacts.map(c => (
+                  <option key={c.id} value={c.id}>{c.name} {c.is_primary ? '(Primary)' : ''}</option>
+                ))}
+              </select>
+            </div>
+            
+            <Input label="Nama PIC (Ketik Manual)" name="customer_pic" value={formData.customer_pic} onChange={handleChange} disabled={!!formData.customer_contact_id} />
+            <Input label="No. Telepon PIC" name="customer_phone" value={formData.customer_phone} onChange={handleChange} disabled={!!formData.customer_contact_id} />
             
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium text-slate-300">Jenis Layanan</label>
@@ -733,23 +816,11 @@ export default function JobOrderForm({ initialData = null, isEdit = false }) {
                 )}
 
                 {formData.trucking_details.party_volume_type === 'LCL/BB' && (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                    <Input label="Weight / Ton" type="number" min="0" step="0.01" name="weight" value={formData.trucking_details.weight || ''} onChange={handleTruckingDetailChange} />
-                    <Input label="Volume (M³ / CBM)" type="number" min="0" step="0.01" name="volume" value={formData.trucking_details.volume || ''} onChange={handleTruckingDetailChange} />
-                    <Input label="Quantity" type="number" min="0" name="quantity" value={formData.trucking_details.quantity || ''} onChange={handleTruckingDetailChange} />
-                    
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-medium text-slate-300">Unit</label>
-                      <select className="bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500"
-                        name="unit" value={formData.trucking_details.unit || ''} onChange={handleTruckingDetailChange}>
-                        <option value="">Pilih Unit</option>
-                        <option value="PCS">PCS</option>
-                        <option value="BOX">BOX</option>
-                        <option value="PALLET">PALLET</option>
-                        <option value="CARTON">CARTON</option>
-                        <option value="OTHER">OTHER</option>
-                      </select>
-                    </div>
+                  <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-800 text-sm text-slate-400">
+                    <p className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-sky-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      Informasi muatan LCL/BB menggunakan data dari bagian <strong>3. Informasi Muatan</strong>.
+                    </p>
                   </div>
                 )}
               </div>

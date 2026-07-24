@@ -11,6 +11,9 @@ DROP TABLE IF EXISTS trucking_containers;
 DROP TABLE IF EXISTS project_details;
 
 DROP TABLE IF EXISTS job_orders;
+DROP TABLE IF EXISTS business_partner_contacts;
+DROP TABLE IF EXISTS business_partner_roles;
+DROP TABLE IF EXISTS business_partners;
 
 DROP TABLE IF EXISTS audit_logs;
 DROP TABLE IF EXISTS budgets;
@@ -45,6 +48,56 @@ CREATE TABLE users (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE RESTRICT
+);
+
+-- 2.5 Business Partners
+CREATE TABLE IF NOT EXISTS business_partners (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  partner_code VARCHAR(50) NOT NULL UNIQUE,
+  partner_name VARCHAR(255) NOT NULL,
+  short_name VARCHAR(100) NULL,
+  partner_type ENUM('COMPANY', 'INDIVIDUAL') NOT NULL DEFAULT 'COMPANY',
+  email VARCHAR(120) NULL,
+  phone VARCHAR(50) NULL,
+  city VARCHAR(100) NULL,
+  address TEXT NULL,
+  npwp VARCHAR(50) NULL,
+  status ENUM('ACTIVE', 'INACTIVE') NOT NULL DEFAULT 'ACTIVE',
+  
+  created_by INT NULL,
+  updated_by INT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  
+  FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+  FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+);
+
+-- 2.6 Business Partner Roles
+CREATE TABLE IF NOT EXISTS business_partner_roles (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  partner_id INT NOT NULL,
+  role ENUM('CUSTOMER', 'VENDOR', 'SHIPPER', 'SHIPPING_AGENT', 'SHIPPING_COMPANY') NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  
+  FOREIGN KEY (partner_id) REFERENCES business_partners(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_partner_role (partner_id, role)
+);
+
+-- 2.7 Business Partner Contacts
+CREATE TABLE IF NOT EXISTS business_partner_contacts (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  partner_id INT NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  position VARCHAR(100) NULL,
+  phone VARCHAR(50) NULL,
+  email VARCHAR(120) NULL,
+  is_primary BOOLEAN DEFAULT FALSE,
+  status ENUM('ACTIVE', 'INACTIVE') NOT NULL DEFAULT 'ACTIVE',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  
+  FOREIGN KEY (partner_id) REFERENCES business_partners(id) ON DELETE CASCADE
 );
 
 -- 3. Chart of Accounts (COA) Table
@@ -170,7 +223,9 @@ CREATE TABLE IF NOT EXISTS job_orders (
   job_order_number VARCHAR(50) NOT NULL UNIQUE,
   job_date DATE NOT NULL,
   
-  -- Customer Information (Denormalized for Phase 1)
+  -- Customer Information (Denormalized for Phase 1, Master Data for Phase 2)
+  customer_id INT NULL,
+  customer_contact_id INT NULL,
   customer_name VARCHAR(255) NULL,
   customer_reference VARCHAR(100) NULL,
   customer_pic VARCHAR(100) NULL,
@@ -215,7 +270,9 @@ CREATE TABLE IF NOT EXISTS job_orders (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   
   FOREIGN KEY (created_by) REFERENCES users(id),
-  FOREIGN KEY (updated_by) REFERENCES users(id)
+  FOREIGN KEY (updated_by) REFERENCES users(id),
+  FOREIGN KEY (customer_id) REFERENCES business_partners(id) ON DELETE RESTRICT,
+  FOREIGN KEY (customer_contact_id) REFERENCES business_partner_contacts(id) ON DELETE SET NULL
 );
 
 -- 2. Job Order Activities Table
@@ -355,11 +412,9 @@ CREATE TABLE IF NOT EXISTS trucking_details (
   -- Cargo / Container
   party_volume_type VARCHAR(50) NULL, -- 'FCL' or 'LCL/BB'
   
-  -- LCL / BB Specific fields
-  weight DECIMAL(10,2) NULL,
-  volume DECIMAL(10,2) NULL,
-  quantity DECIMAL(10,2) NULL,
-  unit VARCHAR(50) NULL,
+  -- LCL / BB Specific fields (Migrated to Job Orders Cargo)
+  -- Note: Weight, volume, quantity, and unit are now managed in the job_orders table 
+  -- under cargo_weight, cargo_volume, cargo_quantity, and cargo_unit.
   
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

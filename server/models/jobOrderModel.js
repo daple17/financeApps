@@ -46,6 +46,7 @@ class JobOrderModel {
       const insertQuery = `
         INSERT INTO job_orders (
           job_order_number, job_date, job_order_type,
+          customer_id, customer_contact_id,
           customer_name, customer_reference, customer_pic, customer_phone,
           service_type,
           pickup_location, pickup_address, pickup_date,
@@ -56,12 +57,13 @@ class JobOrderModel {
           job_status,
           created_by
         ) VALUES (
-          ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+          ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
         )
       `;
 
       const [result] = await connection.query(insertQuery, [
         jobOrderNumber, data.job_date, data.job_order_type || null,
+        data.customer_id || null, data.customer_contact_id || null,
         data.customer_name || null, data.customer_reference || null, data.customer_pic || null, data.customer_phone || null,
         data.service_type || null,
         data.pickup_location || null, data.pickup_address || null, data.pickup_date || null,
@@ -193,12 +195,14 @@ class JobOrderModel {
       SELECT 
         j.*,
         u.name AS created_by_name,
+        COALESCE(bp.partner_name, j.customer_name) AS display_customer_name,
         ed.bl_number AS export_bl_number, ed.si_do_number AS export_si_number, ed.vessel AS export_vessel, ed.eta_date AS export_eta, ed.etd_date AS export_etd, ed.planned_delivery_date AS export_planned,
         imp.bl_number AS import_bl_number, imp.do_number AS import_do_number, imp.vessel AS import_vessel, imp.eta_date AS import_eta, imp.planned_delivery_date AS import_planned,
         trk.bl_number AS trucking_bl_number, trk.si_do_number AS trucking_si_do_number, trk.vessel AS trucking_vessel, trk.planned_delivery_date AS trucking_planned,
         proj.si_do_number AS project_si_do_number, proj.planned_delivery_date AS project_planned
       FROM job_orders j
       JOIN users u ON j.created_by = u.id
+      LEFT JOIN business_partners bp ON j.customer_id = bp.id
       LEFT JOIN export_details ed ON j.id = ed.job_order_id
       LEFT JOIN import_details imp ON j.id = imp.job_order_id
       LEFT JOIN trucking_details trk ON j.id = trk.job_order_id
@@ -208,9 +212,9 @@ class JobOrderModel {
     const params = [];
 
     if (search) {
-      query += ` AND (j.job_order_number LIKE ? OR j.customer_name LIKE ? OR j.pickup_location LIKE ? OR j.delivery_location LIKE ?)`;
+      query += ` AND (j.job_order_number LIKE ? OR j.customer_name LIKE ? OR bp.partner_name LIKE ? OR j.pickup_location LIKE ? OR j.delivery_location LIKE ?)`;
       const searchWildcard = `%${search}%`;
-      params.push(searchWildcard, searchWildcard, searchWildcard, searchWildcard);
+      params.push(searchWildcard, searchWildcard, searchWildcard, searchWildcard, searchWildcard);
     }
 
     if (status) {
@@ -240,8 +244,11 @@ class JobOrderModel {
         import_bl_number, import_do_number, import_vessel, import_eta, import_planned,
         trucking_bl_number, trucking_si_do_number, trucking_vessel, trucking_planned,
         project_si_do_number, project_planned,
+        display_customer_name,
         ...job
       } = row;
+      
+      job.customer_name = display_customer_name || job.customer_name;
       
       if (job.job_order_type === 'EXPORT') {
         job.export_detail = {
@@ -316,9 +323,9 @@ class JobOrderModel {
     const params = [];
 
     if (search) {
-      query += ` AND (j.job_order_number LIKE ? OR j.customer_name LIKE ? OR j.pickup_location LIKE ? OR j.delivery_location LIKE ?)`;
+      query += ` AND (j.job_order_number LIKE ? OR j.customer_name LIKE ? OR j.pickup_location LIKE ? OR j.delivery_location LIKE ? OR j.customer_id IN (SELECT id FROM business_partners WHERE partner_name LIKE ?))`;
       const searchWildcard = `%${search}%`;
-      params.push(searchWildcard, searchWildcard, searchWildcard, searchWildcard);
+      params.push(searchWildcard, searchWildcard, searchWildcard, searchWildcard, searchWildcard);
     }
     
     if (type) {
@@ -349,16 +356,30 @@ class JobOrderModel {
       SELECT 
         j.*,
         u.name AS created_by_name,
-        up.name AS updated_by_name
+        up.name AS updated_by_name,
+        COALESCE(bp.partner_name, j.customer_name) AS display_customer_name,
+        bpc.name AS display_customer_pic,
+        bpc.phone AS display_customer_phone
       FROM job_orders j
       JOIN users u ON j.created_by = u.id
       LEFT JOIN users up ON j.updated_by = up.id
+      LEFT JOIN business_partners bp ON j.customer_id = bp.id
+      LEFT JOIN business_partner_contacts bpc ON j.customer_contact_id = bpc.id
       WHERE j.id = ?
     `;
     const [rows] = await db.query(query, [id]);
     if (rows.length === 0) return null;
 
     const jobOrder = rows[0];
+    
+    // Merge master data displays into the legacy fields for uniform frontend usage
+    if (jobOrder.display_customer_name) jobOrder.customer_name = jobOrder.display_customer_name;
+    if (jobOrder.display_customer_pic) jobOrder.customer_pic = jobOrder.display_customer_pic;
+    if (jobOrder.display_customer_phone) jobOrder.customer_phone = jobOrder.display_customer_phone;
+    
+    delete jobOrder.display_customer_name;
+    delete jobOrder.display_customer_pic;
+    delete jobOrder.display_customer_phone;
 
     // Fetch export details if type is EXPORT
     if (jobOrder.job_order_type === 'EXPORT') {
@@ -427,14 +448,16 @@ class JobOrderModel {
     try {
       await connection.beginTransaction();
 
-      // Get current JO to check status changes
-      const [currentRows] = await connection.query(`SELECT job_status FROM job_orders WHERE id = ? FOR UPDATE`, [id]);
+      // Get current JO to check status changes and type changes
+      const [currentRows] = await connection.query(`SELECT job_status, job_order_type FROM job_orders WHERE id = ? FOR UPDATE`, [id]);
       if (currentRows.length === 0) throw new Error('Job Order tidak ditemukan');
       const currentStatus = currentRows[0].job_status;
+      const currentType = currentRows[0].job_order_type;
 
       const updateQuery = `
         UPDATE job_orders SET
           job_date = ?, job_order_type = ?,
+          customer_id = ?, customer_contact_id = ?,
           customer_name = ?, customer_reference = ?, customer_pic = ?, customer_phone = ?,
           service_type = ?,
           pickup_location = ?, pickup_address = ?, pickup_date = ?,
@@ -449,6 +472,7 @@ class JobOrderModel {
 
       await connection.query(updateQuery, [
         data.job_date, data.job_order_type || null,
+        data.customer_id || null, data.customer_contact_id || null,
         data.customer_name || null, data.customer_reference || null, data.customer_pic || null, data.customer_phone || null,
         data.service_type || null,
         data.pickup_location || null, data.pickup_address || null, data.pickup_date || null,
@@ -460,6 +484,20 @@ class JobOrderModel {
         userId,
         id
       ]);
+
+      // Handle Extension Type Integrity (Clean up stale extensions on type switch)
+      if (data.job_order_type && data.job_order_type !== currentType) {
+        if (currentType === 'IMPORT') {
+          await connection.query(`DELETE FROM import_details WHERE job_order_id = ?`, [id]);
+        } else if (currentType === 'EXPORT') {
+          await connection.query(`DELETE FROM export_details WHERE job_order_id = ?`, [id]);
+        } else if (currentType === 'TRUCKING') {
+          await connection.query(`DELETE FROM trucking_details WHERE job_order_id = ?`, [id]);
+          await connection.query(`DELETE FROM trucking_containers WHERE job_order_id = ?`, [id]);
+        } else if (currentType === 'PROJECT') {
+          await connection.query(`DELETE FROM project_details WHERE job_order_id = ?`, [id]);
+        }
+      }
 
       // Handle Export Details update
       if (data.job_order_type === 'EXPORT' && data.export_details) {
@@ -530,20 +568,17 @@ class JobOrderModel {
         const truckingQuery = `
           INSERT INTO trucking_details (
             job_order_id, bl_number, bl_date, si_do_number, si_do_date,
-            vessel, planned_delivery_date, party_volume_type,
-            weight, volume, quantity, unit
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            vessel, planned_delivery_date, party_volume_type
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
           ON DUPLICATE KEY UPDATE
             bl_number = VALUES(bl_number), bl_date = VALUES(bl_date),
             si_do_number = VALUES(si_do_number), si_do_date = VALUES(si_do_date),
             vessel = VALUES(vessel), planned_delivery_date = VALUES(planned_delivery_date),
-            party_volume_type = VALUES(party_volume_type),
-            weight = VALUES(weight), volume = VALUES(volume), quantity = VALUES(quantity), unit = VALUES(unit)
+            party_volume_type = VALUES(party_volume_type)
         `;
         await connection.query(truckingQuery, [
           id, trk.bl_number || null, trk.bl_date || null, trk.si_do_number || null, trk.si_do_date || null,
-          trk.vessel || null, trk.planned_delivery_date || null, trk.party_volume_type || null,
-          trk.weight || null, trk.volume || null, trk.quantity || null, trk.unit || null
+          trk.vessel || null, trk.planned_delivery_date || null, trk.party_volume_type || null
         ]);
 
         // Replace all containers
