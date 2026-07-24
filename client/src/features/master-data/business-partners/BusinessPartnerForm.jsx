@@ -171,10 +171,13 @@ export default function BusinessPartnerForm() {
           </button>
           <div>
             <h1 className="text-xl font-bold text-white">
-              {isEdit ? 'Edit Business Partner' : 'Tambah Business Partner'}
+              {isEdit 
+                ? (location.pathname.includes('/customers') ? 'Edit Customer' : location.pathname.includes('/vendors') ? 'Edit Vendor' : 'Edit Business Partner')
+                : (location.pathname.includes('/customers') ? 'Tambah Customer' : location.pathname.includes('/vendors') ? 'Tambah Vendor' : 'Tambah Business Partner')
+              }
             </h1>
             <p className="text-sm text-slate-400">
-              {isEdit ? formData.partner_name : 'Buat master data partner baru'}
+              {isEdit ? formData.partner_name : `Buat data ${location.pathname.includes('/customers') ? 'customer' : location.pathname.includes('/vendors') ? 'vendor' : 'partner'} baru`}
             </p>
           </div>
         </div>
