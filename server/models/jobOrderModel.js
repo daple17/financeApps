@@ -127,14 +127,12 @@ class JobOrderModel {
         const truckingQuery = `
           INSERT INTO trucking_details (
             job_order_id, bl_number, bl_date, si_do_number, si_do_date,
-            vessel, planned_delivery_date, party_volume_type,
-            weight, volume, quantity, unit
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            vessel, planned_delivery_date, party_volume_type
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `;
         await connection.query(truckingQuery, [
           jobOrderId, trk.bl_number || null, trk.bl_date || null, trk.si_do_number || null, trk.si_do_date || null,
-          trk.vessel || null, trk.planned_delivery_date || null, trk.party_volume_type || null,
-          trk.weight || null, trk.volume || null, trk.quantity || null, trk.unit || null
+          trk.vessel || null, trk.planned_delivery_date || null, trk.party_volume_type || null
         ]);
 
         if (trk.party_volume_type === 'FCL' && Array.isArray(trk.containers) && trk.containers.length > 0) {
