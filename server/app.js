@@ -23,7 +23,12 @@ const operationRoutes = require('./routes/operationRoutes');
 const app = express();
 
 // Middlewares
-app.use(cors());
+const corsOptions = {
+  origin: process.env.NODE_ENV === 'production' 
+    ? (process.env.FRONTEND_URL || false) // if not set, blocks CORS
+    : '*',
+};
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -80,10 +85,19 @@ app.get('*', (req, res) => {
 
 // Global Error Handler
 app.use((err, req, res, next) => {
-  console.error('[Global Error Handler]:', err.stack);
+  if (process.env.NODE_ENV !== 'production') {
+    console.error('[Global Error Handler]:', err.stack);
+  } else {
+    console.error('[Global Error Handler]:', err.message);
+  }
+  
+  const message = process.env.NODE_ENV === 'production' && !err.statusCode 
+    ? 'Internal Server Error' 
+    : err.message || 'Internal Server Error';
+
   res.status(err.statusCode || 500).json({
     status: 'error',
-    message: err.message || 'Internal Server Error'
+    message: message
   });
 });
 

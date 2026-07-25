@@ -1,5 +1,6 @@
 const DocumentModel = require('../models/documentModel');
 const PodModel = require('../models/podModel');
+const storageService = require('../services/storageService');
 
 const documentController = {
   getOperationDocuments: async (req, res) => {
@@ -26,13 +27,16 @@ const documentController = {
         return res.status(400).json({ status: 'error', message: 'No file uploaded' });
       }
 
+      // 1. Process upload using Storage Service
+      const filePath = await storageService.uploadFile(req.file);
+
       const docData = {
         operation_id: req.params.id,
         document_type: req.body.document_type || 'OTHER',
         document_number: req.body.document_number,
         document_date: req.body.document_date,
         file_name: req.file.originalname,
-        file_path: req.file.path.replace('uploads/', ''), // store relative to uploads
+        file_path: filePath,
         mime_type: req.file.mimetype,
         file_size: req.file.size,
         notes: req.body.notes,
@@ -70,12 +74,14 @@ const documentController = {
         return res.status(400).json({ status: 'error', message: 'Proof of Delivery evidence file is required' });
       }
 
-      // 1. Save Document Evidence
+      // 1. Save Document Evidence via Storage Service
+      const filePath = await storageService.uploadFile(req.file);
+      
       const docData = {
         operation_id: req.params.id,
         document_type: 'POD',
         file_name: req.file.originalname,
-        file_path: req.file.path.replace('uploads/', ''),
+        file_path: filePath,
         mime_type: req.file.mimetype,
         file_size: req.file.size,
         uploaded_by: req.user.id
@@ -106,7 +112,12 @@ const documentController = {
   verifyPod: async (req, res) => {
     try {
       const { action, reason } = req.body;
-      const podId = req.params.podId;
+      let podId = req.params.podId || req.body.podId;
+      if (!podId) {
+        const pod = await PodModel.getLatestByOperation(req.params.id);
+        if (!pod) return res.status(404).json({ status: 'error', message: 'POD not found for this operation' });
+        podId = pod.id;
+      }
       
       if (action === 'VERIFY') {
         await PodModel.verifyPod(podId, req.params.id, req.user.id);

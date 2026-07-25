@@ -6,6 +6,11 @@ const dotenv = require('dotenv');
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
 async function runMigration() {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('[Migration Error] CATASTROPHIC SAFETY ABORT: Destructive initialization (init.sql) cannot be run in production environments. Please use the automated safe migration script or a dedicated migration tool.');
+    process.exit(1);
+  }
+
   console.log('[Migration] Starting MySQL database migration...');
   
   const connection = await mysql.createConnection({
