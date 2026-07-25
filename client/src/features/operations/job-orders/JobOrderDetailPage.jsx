@@ -9,6 +9,7 @@ import Button from '../../../components/ui/Button';
 import Badge from '../../../components/ui/Badge';
 import { Plus, Truck } from 'lucide-react';
 import JobOrderDocumentsTab from './documents/JobOrderDocumentsTab';
+import JobOrderCostTab from './costs/JobOrderCostTab';
 
 export default function JobOrderDetailPage() {
   const { id } = useParams();
@@ -558,26 +559,27 @@ export default function JobOrderDetailPage() {
           </div>
         )}
 
-        {activeTab === 'COST' && (
-          <Card>
-            <div className="p-12 text-center">
-              <h3 className="text-lg font-medium text-white mb-2">Segera Hadir</h3>
-              <p className="text-slate-400 text-sm">Fitur {activeTab.charAt(0) + activeTab.slice(1).toLowerCase()} akan tersedia pada fase berikutnya.</p>
-            </div>
-          </Card>
-        )}
+        {activeTab === 'COST' && <JobOrderCostTab jobOrderId={id} />}
 
-        {activeTab === 'DOCUMENTS' && (
-          <JobOrderDocumentsTab jobOrderId={id} />
-        )}
+        {activeTab === 'DOCUMENTS' && <JobOrderDocumentsTab jobOrderId={id} />}
 
         {activeTab === 'OPERATIONS' && (
           <div className="space-y-6">
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-semibold text-white">Daftar Operations</h3>
-              <Button onClick={() => navigate(`/operations/create?jobOrderId=${id}`)}>
-                <Plus className="w-4 h-4 mr-2" /> Create Operation
-              </Button>
+              <div className="relative group">
+                <Button 
+                  onClick={() => navigate(`/operations/create?jobOrderId=${id}`)}
+                  disabled={['DRAFT', 'COMPLETED', 'CANCELLED', 'CLOSED'].includes(jobOrder.job_status)}
+                >
+                  <Plus className="w-4 h-4 mr-2" /> Create Operation
+                </Button>
+                {['DRAFT', 'COMPLETED', 'CANCELLED', 'CLOSED'].includes(jobOrder.job_status) && (
+                  <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-800 text-xs text-slate-300 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none transition-opacity">
+                    Job Order status must be CONFIRMED or IN PROGRESS
+                  </div>
+                )}
+              </div>
             </div>
 
             {operations.length === 0 ? (

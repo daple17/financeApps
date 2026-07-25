@@ -1,13 +1,56 @@
 const TransactionModel = require('../models/transactionModel');
+const OperationCostModel = require('../models/operationCostModel');
 const UserModel = require('../models/userModel');
 
 class ApprovalService {
   static async getPendingApprovals(filters) {
+    if (filters.type === 'OPERATION_COST') {
+      return await OperationCostModel.getPendingApprovals();
+    }
     return await TransactionModel.findAll({ ...filters, status: 'PENDING_APPROVAL' });
   }
 
-  static async approve(transactionId, userId) {
-    const transaction = await TransactionModel.findById(transactionId);
+  static async approve(entityId, userId, entityType = 'TRANSACTION') {
+    if (entityType === 'OPERATION_COST') {
+      const operationCost = await OperationCostModel.findById(entityId);
+      if (!operationCost) {
+        const error = new Error('Biaya operasional tidak ditemukan');
+        error.statusCode = 404;
+        throw error;
+      }
+
+      if (operationCost.status !== 'SUBMITTED') {
+        const error = new Error(`Cost status is ${operationCost.status}, not SUBMITTED`);
+        error.statusCode = 400;
+        throw error;
+      }
+
+      if (operationCost.created_by === userId) {
+        const error = new Error('Pemisahan tugas: Anda tidak dapat menyetujui biaya operasional yang Anda buat sendiri');
+        error.statusCode = 403;
+        throw error;
+      }
+
+      const success = await OperationCostModel.updateStatus(entityId, 'APPROVED', userId, 'SUBMITTED');
+      if (!success) {
+        const error = new Error('Gagal menyetujui, record mungkin telah diubah oleh orang lain');
+        error.statusCode = 409;
+        throw error;
+      }
+
+      await UserModel.logAudit({
+        userId,
+        action: 'OPERATION_COST_APPROVED',
+        entityType: 'OPERATION_COST',
+        entityId: entityId,
+        details: { reference_no: operationCost.reference_no }
+      });
+
+      return await OperationCostModel.findById(entityId);
+    }
+
+    // Default Transaction logic
+    const transaction = await TransactionModel.findById(entityId);
     if (!transaction) {
       const error = new Error('Transaksi tidak ditemukan');
       error.statusCode = 404;
@@ -20,27 +63,66 @@ class ApprovalService {
       throw error;
     }
 
-    await TransactionModel.updateStatus(transactionId, 'APPROVED', userId, null);
+    await TransactionModel.updateStatus(entityId, 'APPROVED', userId, null);
 
     await UserModel.logAudit({
       userId,
       action: 'APPROVAL_APPROVE',
       entityType: 'TRANSACTION',
-      entityId: transactionId,
+      entityId: entityId,
       details: { transactionNumber: transaction.transaction_number }
     });
 
-    return await TransactionModel.findById(transactionId);
+    return await TransactionModel.findById(entityId);
   }
 
-  static async reject(transactionId, userId, rejectionReason) {
+  static async reject(entityId, userId, rejectionReason, entityType = 'TRANSACTION') {
     if (!rejectionReason) {
       const error = new Error('Alasan penolakan pengajuan wajib diisi');
       error.statusCode = 400;
       throw error;
     }
 
-    const transaction = await TransactionModel.findById(transactionId);
+    if (entityType === 'OPERATION_COST') {
+      const operationCost = await OperationCostModel.findById(entityId);
+      if (!operationCost) {
+        const error = new Error('Biaya operasional tidak ditemukan');
+        error.statusCode = 404;
+        throw error;
+      }
+
+      if (operationCost.status !== 'SUBMITTED') {
+        const error = new Error(`Cost status is ${operationCost.status}, not SUBMITTED`);
+        error.statusCode = 400;
+        throw error;
+      }
+
+      if (operationCost.created_by === userId) {
+        const error = new Error('Pemisahan tugas: Anda tidak dapat menolak biaya operasional yang Anda buat sendiri');
+        error.statusCode = 403;
+        throw error;
+      }
+
+      const success = await OperationCostModel.updateStatus(entityId, 'REJECTED', userId, 'SUBMITTED', rejectionReason);
+      if (!success) {
+        const error = new Error('Gagal menolak, record mungkin telah diubah oleh orang lain');
+        error.statusCode = 409;
+        throw error;
+      }
+
+      await UserModel.logAudit({
+        userId,
+        action: 'OPERATION_COST_REJECTED',
+        entityType: 'OPERATION_COST',
+        entityId: entityId,
+        details: { reference_no: operationCost.reference_no, rejectionReason }
+      });
+
+      return await OperationCostModel.findById(entityId);
+    }
+
+    // Default Transaction logic
+    const transaction = await TransactionModel.findById(entityId);
     if (!transaction) {
       const error = new Error('Transaksi tidak ditemukan');
       error.statusCode = 404;
@@ -53,17 +135,17 @@ class ApprovalService {
       throw error;
     }
 
-    await TransactionModel.updateStatus(transactionId, 'REJECTED', userId, rejectionReason);
+    await TransactionModel.updateStatus(entityId, 'REJECTED', userId, rejectionReason);
 
     await UserModel.logAudit({
       userId,
       action: 'APPROVAL_REJECT',
       entityType: 'TRANSACTION',
-      entityId: transactionId,
+      entityId: entityId,
       details: { transactionNumber: transaction.transaction_number, rejectionReason }
     });
 
-    return await TransactionModel.findById(transactionId);
+    return await TransactionModel.findById(entityId);
   }
 }
 

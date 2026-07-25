@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const JobOrderModel = require('./jobOrderModel');
 
 class OperationModel {
   static async generateOperationNumber(connection) {
@@ -39,6 +40,17 @@ class OperationModel {
     try {
       await conn.beginTransaction();
 
+      await conn.beginTransaction();
+
+      const [joRows] = await conn.query('SELECT job_status FROM job_orders WHERE id = ?', [data.job_order_id]);
+      if (joRows.length === 0) {
+        throw new Error('Job Order not found');
+      }
+      const joStatus = joRows[0].job_status;
+      if (['DRAFT', 'COMPLETED', 'CANCELLED', 'CLOSED'].includes(joStatus)) {
+        throw new Error('Job Order must be Confirmed or In Progress before an Operation can be created.');
+      }
+
       const operationNo = await this.generateOperationNumber(conn);
 
       const [result] = await conn.query(
@@ -73,6 +85,10 @@ class OperationModel {
       );
 
       await conn.commit();
+
+      // Trigger Job Order Rollup
+      await JobOrderModel.syncStatusFromOperations(data.job_order_id);
+
       return operationId;
     } catch (error) {
       await conn.rollback();
@@ -208,14 +224,16 @@ class OperationModel {
 
   static async updateStatus(id, status, updatedBy, notes = null, cancellationReason = null) {
     const conn = await db.getConnection();
+    let jobOrderId = null;
     try {
       await conn.beginTransaction();
       
-      const [oldRows] = await conn.query('SELECT status FROM operations WHERE id = ?', [id]);
+      const [oldRows] = await conn.query('SELECT job_order_id, status FROM operations WHERE id = ?', [id]);
       if (oldRows.length === 0) {
         throw new Error('Operation not found');
       }
       const oldStatus = oldRows[0].status;
+      jobOrderId = oldRows[0].job_order_id;
 
       // Validate Transition Rules
       const validTransitions = {
@@ -329,6 +347,12 @@ class OperationModel {
       );
 
       await conn.commit();
+
+      // Trigger Job Order Rollup
+      if (jobOrderId) {
+        await JobOrderModel.syncStatusFromOperations(jobOrderId);
+      }
+
       return true;
     } catch (error) {
       await conn.rollback();

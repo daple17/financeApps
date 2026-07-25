@@ -8,6 +8,7 @@ import { Card, CardHeader } from '../../../components/ui/Card';
 import Button from '../../../components/ui/Button';
 import Badge from '../../../components/ui/Badge';
 import OperationDocumentsTab from './documents/OperationDocumentsTab';
+import OperationCostTab from './costs/OperationCostTab';
 
 export default function OperationDetailPage() {
   const { id } = useParams();
@@ -169,7 +170,7 @@ export default function OperationDetailPage() {
 
       <div className="border-b border-slate-800">
         <nav className="-mb-px flex space-x-6 overflow-x-auto">
-          {['OVERVIEW', 'DOCUMENTS'].map((tab) => (
+          {['OVERVIEW', 'COST', 'DOCUMENTS'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -433,6 +434,10 @@ export default function OperationDetailPage() {
 
         {activeTab === 'DOCUMENTS' && (
           <OperationDocumentsTab operationId={id} operationStatus={operation.status} />
+        )}
+
+        {activeTab === 'COST' && (
+          <OperationCostTab operationId={id} jobOrderId={operation?.job_order_id} />
         )}
       </div>
 

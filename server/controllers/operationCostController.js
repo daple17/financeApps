@@ -1,6 +1,7 @@
 const OperationCostModel = require('../models/operationCostModel');
 const OperationModel = require('../models/operationModel');
 const BusinessPartnerModel = require('../models/masterData/businessPartnerModel');
+const UserModel = require('../models/userModel');
 
 const operationCostController = {
   createOperationCost: async (req, res) => {
@@ -101,8 +102,8 @@ const operationCostController = {
         return res.status(404).json({ status: 'error', message: 'Biaya operasional tidak ditemukan' });
       }
 
-      if (!['DRAFT', 'SUBMITTED'].includes(existingCost.status)) {
-        return res.status(400).json({ status: 'error', message: 'Hanya cost dengan status DRAFT atau SUBMITTED yang dapat diubah' });
+      if (!['DRAFT', 'REJECTED'].includes(existingCost.status)) {
+        return res.status(400).json({ status: 'error', message: 'Hanya cost dengan status DRAFT atau REJECTED yang dapat diubah' });
       }
 
       if (vendor_id && vendor_id !== existingCost.vendor_id) {
@@ -121,6 +122,16 @@ const operationCostController = {
         return res.status(400).json({ status: 'error', message: 'Gagal memperbarui biaya operasional' });
       }
 
+      if (existingCost.status === 'REJECTED') {
+        await UserModel.logAudit({
+          userId: req.user.id,
+          action: 'OPERATION_COST_REVISED',
+          entityType: 'OPERATION_COST',
+          entityId: id,
+          details: { reference_no: existingCost.reference_no, previous_rejection_reason: existingCost.rejection_reason }
+        });
+      }
+
       res.json({ status: 'success', message: 'Biaya operasional berhasil diperbarui' });
     } catch (error) {
       console.error('[OperationCostController] updateOperationCost error:', error);
@@ -134,7 +145,7 @@ const operationCostController = {
       const { status } = req.body;
       const userId = req.user.id;
 
-      const validStatuses = ['DRAFT', 'SUBMITTED', 'APPROVED'];
+      const validStatuses = ['SUBMITTED'];
       if (!validStatuses.includes(status)) {
         return res.status(400).json({ status: 'error', message: 'Status tidak valid atau tidak diizinkan pada fase ini' });
       }
@@ -152,7 +163,6 @@ const operationCostController = {
       const currentStatus = existingCost.status;
       let validTransition = false;
       if (currentStatus === 'DRAFT' && status === 'SUBMITTED') validTransition = true;
-      else if (currentStatus === 'SUBMITTED' && status === 'APPROVED') validTransition = true;
 
       if (!validTransition) {
         return res.status(400).json({ 
@@ -163,9 +173,19 @@ const operationCostController = {
 
       // TODO in phase 3.5.x: when status === 'POSTED', create transaction and journal entry.
 
-      const success = await OperationCostModel.updateStatus(id, status, userId);
+      const success = await OperationCostModel.updateStatus(id, status, userId, currentStatus);
       if (!success) {
         return res.status(400).json({ status: 'error', message: 'Gagal mengubah status biaya operasional' });
+      }
+
+      if (status === 'SUBMITTED') {
+        await UserModel.logAudit({
+          userId,
+          action: 'OPERATION_COST_SUBMITTED',
+          entityType: 'OPERATION_COST',
+          entityId: id,
+          details: { reference_no: existingCost.reference_no }
+        });
       }
 
       res.json({ status: 'success', message: 'Status berhasil diperbarui' });

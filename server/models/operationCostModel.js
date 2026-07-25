@@ -70,8 +70,9 @@ class OperationCostModel {
       UPDATE operation_costs SET
         cost_type = ?, description = ?, vendor_id = ?,
         amount = ?, currency = ?, transaction_date = ?,
-        reference_no = ?, notes = ?
-      WHERE id = ? AND status IN ('DRAFT', 'SUBMITTED')
+        reference_no = ?, notes = ?, status = 'DRAFT',
+        rejection_reason = NULL
+      WHERE id = ? AND status IN ('DRAFT', 'REJECTED')
     `;
     const params = [
       costData.cost_type,
@@ -88,23 +89,49 @@ class OperationCostModel {
     return result.affectedRows > 0;
   }
 
-  static async updateStatus(id, newStatus, userId) {
+  static async updateStatus(id, newStatus, userId, expectedCurrentStatus = null, rejectionReason = null) {
     let query = `UPDATE operation_costs SET status = ?`;
     const params = [newStatus];
 
     if (newStatus === 'APPROVED') {
-      query += `, approved_by = ?, approved_at = NOW()`;
+      query += `, approved_by = ?, approved_at = NOW(), rejection_reason = NULL`;
       params.push(userId);
     } else if (newStatus === 'POSTED') {
       query += `, posted_by = ?, posted_at = NOW()`;
       params.push(userId);
+    } else if (newStatus === 'REJECTED') {
+      query += `, rejection_reason = ?`;
+      params.push(rejectionReason);
     }
 
     query += ` WHERE id = ?`;
     params.push(id);
+    
+    if (expectedCurrentStatus) {
+      query += ` AND status = ?`;
+      params.push(expectedCurrentStatus);
+    }
 
     const [result] = await db.query(query, params);
     return result.affectedRows > 0;
+  }
+  
+  static async getPendingApprovals() {
+    const query = `
+      SELECT 
+        oc.*,
+        u.name AS created_by_name,
+        op.operation_no,
+        jo.job_order_number
+      FROM operation_costs oc
+      JOIN users u ON oc.created_by = u.id
+      JOIN operations op ON oc.operation_id = op.id
+      JOIN job_orders jo ON oc.job_order_id = jo.id
+      WHERE oc.status = 'SUBMITTED'
+      ORDER BY oc.updated_at DESC
+    `;
+    const [rows] = await db.query(query);
+    return rows;
   }
 
   static async updateTransactionId(id, transactionId) {
@@ -120,7 +147,8 @@ class OperationCostModel {
   }
 
   static async getJobOrderCostSummary(jobOrderId) {
-    const query = `
+    // 1. By cost type
+    const typeQuery = `
       SELECT cost_type, 
              SUM(amount) as total_amount, 
              COUNT(id) as count
@@ -128,8 +156,37 @@ class OperationCostModel {
       WHERE job_order_id = ? AND status != 'CANCELLED'
       GROUP BY cost_type
     `;
-    const [rows] = await db.query(query, [jobOrderId]);
-    return rows;
+    const [byType] = await db.query(typeQuery, [jobOrderId]);
+
+    // 2. By status
+    const statusQuery = `
+      SELECT status, 
+             SUM(amount) as total_amount, 
+             COUNT(id) as count
+      FROM operation_costs
+      WHERE job_order_id = ? AND status != 'CANCELLED'
+      GROUP BY status
+    `;
+    const [byStatus] = await db.query(statusQuery, [jobOrderId]);
+
+    // 3. By operation
+    const opQuery = `
+      SELECT op.operation_no,
+             oc.operation_id,
+             SUM(oc.amount) as total_amount, 
+             COUNT(oc.id) as count
+      FROM operation_costs oc
+      LEFT JOIN operations op ON oc.operation_id = op.id
+      WHERE oc.job_order_id = ? AND oc.status != 'CANCELLED'
+      GROUP BY oc.operation_id, op.operation_no
+    `;
+    const [byOperation] = await db.query(opQuery, [jobOrderId]);
+
+    return {
+      by_type: byType,
+      by_status: byStatus,
+      by_operation: byOperation
+    };
   }
 }
 

@@ -164,6 +164,32 @@ exports.updateJobOrder = async (req, res, next) => {
           message: `Transisi status tidak valid. Tidak bisa mengubah status dari ${currentStatus} ke ${jobData.job_status}`
         });
       }
+      
+      // Cancellation rules
+      if (jobData.job_status === JOB_ORDER_STATUSES.CANCELLED) {
+        if (['IN_PROGRESS', 'COMPLETED'].includes(currentStatus)) {
+          return res.status(400).json({
+            status: 'error',
+            message: `Job Order dengan status ${currentStatus} tidak dapat dibatalkan secara manual. Batalkan operations terlebih dahulu.`
+          });
+        }
+        
+        // Verify no operation has started
+        const OperationModel = require('../models/operationModel');
+        const ops = await OperationModel.findByJobOrderId(id);
+        const EXECUTION_STATUSES = [
+          'STARTED', 'ARRIVED_PICKUP', 'PICKED_UP', 'IN_TRANSIT', 
+          'ARRIVED_DESTINATION', 'DELIVERED', 'COMPLETED'
+        ];
+        
+        const hasStartedOps = ops.some(op => EXECUTION_STATUSES.includes(op.status));
+        if (hasStartedOps) {
+          return res.status(400).json({
+            status: 'error',
+            message: 'Tidak dapat membatalkan Job Order karena ada Operation yang sudah berjalan.'
+          });
+        }
+      }
     }
 
     // Validation for CONFIRMED
@@ -215,18 +241,36 @@ exports.getCostSummary = async (req, res, next) => {
       return res.status(404).json({ status: 'error', message: 'Job Order tidak ditemukan' });
     }
 
-    const summary = await OperationCostModel.getJobOrderCostSummary(id);
-    let totalCost = 0;
-    summary.forEach(item => {
-      totalCost += parseFloat(item.total_amount || 0);
+    const summaryData = await OperationCostModel.getJobOrderCostSummary(id);
+    
+    let totalRecordedCost = 0;
+    let draftCost = 0;
+    let submittedCost = 0;
+    let approvedCost = 0;
+
+    summaryData.by_status.forEach(item => {
+      const amount = parseFloat(item.total_amount || 0);
+      totalRecordedCost += amount;
+      if (item.status === 'DRAFT') draftCost += amount;
+      if (item.status === 'SUBMITTED') submittedCost += amount;
+      if (item.status === 'APPROVED') approvedCost += amount;
     });
 
     res.json({
       status: 'success',
       data: {
         job_order_id: id,
-        total_actual_cost: totalCost,
-        breakdown: summary
+        total_actual_cost: totalRecordedCost, // BACKWARD COMPATIBILITY
+        breakdown: summaryData.by_type,       // BACKWARD COMPATIBILITY
+        summary: {
+          total_recorded_cost: totalRecordedCost,
+          draft_cost: draftCost,
+          submitted_cost: submittedCost,
+          approved_cost: approvedCost
+        },
+        by_type: summaryData.by_type,
+        by_status: summaryData.by_status,
+        by_operation: summaryData.by_operation
       }
     });
   } catch (error) {

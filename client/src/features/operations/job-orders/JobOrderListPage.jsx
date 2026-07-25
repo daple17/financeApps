@@ -11,7 +11,7 @@ import TableActionMenu from '../../../components/ui/TableActionMenu';
 
 export default function JobOrderListPage() {
   const [jobOrders, setJobOrders] = useState([]);
-  const [summary, setSummary] = useState({ total: 0, in_progress: 0, completed: 0, draft: 0 });
+  const [summary, setSummary] = useState({ total: 0, in_progress: 0, completed: 0, draft: 0, confirmed: 0 });
   const [isLoading, setIsLoading] = useState(true);
   
   const [search, setSearch] = useState('');
@@ -270,30 +270,36 @@ export default function JobOrderListPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <SummaryCard 
           title="TOTAL JOB" 
-          count={summary.total} 
+          count={summary.total || summary.total_jobs || 0} 
           isActive={statusFilter === ''} 
           onClick={() => setStatusFilter('')} 
         />
         <SummaryCard 
+          title="DRAFT" 
+          count={summary.draft || 0} 
+          isActive={statusFilter === 'DRAFT'} 
+          onClick={() => setStatusFilter('DRAFT')} 
+        />
+        <SummaryCard 
+          title="CONFIRMED" 
+          count={summary.confirmed || 0} 
+          isActive={statusFilter === 'CONFIRMED'} 
+          onClick={() => setStatusFilter('CONFIRMED')} 
+        />
+        <SummaryCard 
           title="IN PROGRESS" 
-          count={summary.in_progress} 
+          count={summary.in_progress || 0} 
           isActive={statusFilter === 'IN_PROGRESS'} 
           onClick={() => setStatusFilter('IN_PROGRESS')} 
         />
         <SummaryCard 
           title="COMPLETED" 
-          count={summary.completed} 
+          count={summary.completed || 0} 
           isActive={statusFilter === 'COMPLETED'} 
           onClick={() => setStatusFilter('COMPLETED')} 
-        />
-        <SummaryCard 
-          title="DRAFT" 
-          count={summary.draft} 
-          isActive={statusFilter === 'DRAFT'} 
-          onClick={() => setStatusFilter('DRAFT')} 
         />
       </div>
 
@@ -445,7 +451,7 @@ export default function JobOrderListPage() {
                         </span>
                       ) : (
                         <span className="px-2 py-1 text-[10px] font-bold rounded-md bg-slate-500/10 text-slate-400 border border-slate-500/20 uppercase">
-                          UNSET
+                          TYPE NOT SET
                         </span>
                       )}
                     </td>

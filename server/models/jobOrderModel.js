@@ -320,7 +320,8 @@ class JobOrderModel {
         COUNT(*) as total_jobs,
         SUM(CASE WHEN job_status = 'IN_PROGRESS' THEN 1 ELSE 0 END) as in_progress,
         SUM(CASE WHEN job_status = 'COMPLETED' THEN 1 ELSE 0 END) as completed,
-        SUM(CASE WHEN job_status = 'DRAFT' THEN 1 ELSE 0 END) as draft
+        SUM(CASE WHEN job_status = 'DRAFT' THEN 1 ELSE 0 END) as draft,
+        SUM(CASE WHEN job_status = 'CONFIRMED' THEN 1 ELSE 0 END) as confirmed
       FROM job_orders j
       WHERE 1=1
     `;
@@ -690,6 +691,107 @@ class JobOrderModel {
       throw error;
     } finally {
       connection.release();
+    }
+  }
+
+  /**
+   * Centralized Job Order status synchronization based on associated Operations.
+   * Excludes cancelled operations from completion check.
+   */
+  static async syncStatusFromOperations(jobOrderId) {
+    const conn = await db.getConnection();
+    try {
+      await conn.beginTransaction();
+
+      // 1. Lock Job Order
+      const [joRows] = await conn.query('SELECT job_status FROM job_orders WHERE id = ? FOR UPDATE', [jobOrderId]);
+      if (joRows.length === 0) {
+        throw new Error('Job Order not found');
+      }
+      
+      const currentStatus = joRows[0].job_status;
+
+      // 2. Protect specific statuses
+      // Do not auto-reopen COMPLETED or modify legacy/reserved statuses
+      const protectedStatuses = ['COMPLETED', 'CANCELLED', 'CLOSED', 'ASSIGNED'];
+      if (protectedStatuses.includes(currentStatus)) {
+        await conn.commit();
+        return { status: currentStatus, changed: false };
+      }
+
+      // 3. Inspect Operations
+      const [opRows] = await conn.query('SELECT status FROM operations WHERE job_order_id = ? AND status != "CANCELLED"', [jobOrderId]);
+      
+      let targetStatus = currentStatus;
+
+      if (opRows.length > 0) {
+        // Evaluate statuses
+        const EXECUTION_STATUSES = [
+          'STARTED',
+          'ARRIVED_PICKUP',
+          'PICKED_UP',
+          'IN_TRANSIT',
+          'ARRIVED_DESTINATION',
+          'DELIVERED',
+          'COMPLETED'
+        ];
+
+        const allCompleted = opRows.every(op => op.status === 'COMPLETED');
+        const anyExecutionStarted = opRows.some(op => EXECUTION_STATUSES.includes(op.status));
+
+        if (allCompleted) {
+          targetStatus = 'COMPLETED';
+        } else if (anyExecutionStarted) {
+          targetStatus = 'IN_PROGRESS';
+        } else {
+          // If operations exist but none are started yet, it means they are in PLANNING/READY
+          // Do not overwrite IN_PROGRESS if it already was IN_PROGRESS (e.g. ops were reverted manually?)
+          // But according to rule 3B, keep JO IN_PROGRESS if execution started.
+          // Since we already check if any op is STARTED, if none are started, maybe it should be CONFIRMED?
+          // The rule states: "If JO IN_PROGRESS and all Ops later become CANCELLED -> DO NOT downgrade".
+          // If op is READY, it shouldn't downgrade IN_PROGRESS.
+          if (currentStatus === 'DRAFT') {
+            // Technically shouldn't have ops, but if it does, keep DRAFT and let user confirm manually? 
+            // Or maybe upgrade? The rule says DRAFT -> CONFIRMED is manual.
+            targetStatus = 'DRAFT';
+          } else if (currentStatus === 'IN_PROGRESS') {
+             targetStatus = 'IN_PROGRESS'; 
+          } else {
+            targetStatus = 'CONFIRMED';
+          }
+        }
+      } else {
+        // 0 non-cancelled operations
+        // Rule 3A: JO CONFIRMED -> all ops cancelled -> keep CONFIRMED
+        // Rule 3B: JO IN_PROGRESS -> all ops cancelled -> keep IN_PROGRESS
+        targetStatus = currentStatus; // No change
+      }
+
+      // 4. Update if changed
+      if (targetStatus !== currentStatus) {
+        await conn.query('UPDATE job_orders SET job_status = ? WHERE id = ?', [targetStatus, jobOrderId]);
+        
+        // Log Activity
+        await conn.query(
+          `INSERT INTO job_order_activities (job_order_id, activity_type, description, performed_by, source)
+           VALUES (?, ?, ?, ?, ?)`,
+          [
+            jobOrderId, 
+            'STATUS_CHANGED', 
+            `Status Job Order disinkronisasi otomatis dari ${currentStatus} menjadi ${targetStatus}`, 
+            1, // System user ID or could pass userId
+            'SYSTEM'
+          ]
+        );
+      }
+
+      await conn.commit();
+      return { status: targetStatus, changed: targetStatus !== currentStatus };
+    } catch (error) {
+      await conn.rollback();
+      throw error;
+    } finally {
+      conn.release();
     }
   }
 }
