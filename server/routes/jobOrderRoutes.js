@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const jobOrderController = require('../controllers/jobOrderController');
 const operationController = require('../controllers/operationController');
+const documentController = require('../controllers/documentController');
 const { authenticate, requirePermission } = require('../middlewares/authMiddleware');
 
 // Base middleware for all job order routes
@@ -25,5 +26,8 @@ router.get('/:id/operations', requirePermission('job_orders.read'), operationCon
 
 // Allocation balance for a Job Order
 router.get('/:id/allocation-balance', requirePermission('job_orders.read'), operationController.getAllocationBalance);
+
+// Documents for a Job Order
+router.get('/:id/documents', requirePermission('job_orders.read'), documentController.getJobOrderDocuments);
 
 module.exports = router;

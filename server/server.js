@@ -39,7 +39,10 @@ async function autoMigrate() {
       '011_phase2_3_logistics_references.sql',
       '012_phase2_4_location_integration.sql',
       '013_phase3_1_operations.sql',
-      '014_phase3_2_execution_unit.sql'
+      '014_phase3_2_execution_unit.sql',
+      '015_phase3_2_resource_assignment.sql',
+      '017_phase3_3_operation_execution.sql',
+      '018_phase3_4_pod_documents.sql'
     ];
     
     for (let file of files) {

@@ -35,7 +35,7 @@ export default function OperationListPage() {
         const sum = { total: res.data.length, planning: 0, in_progress: 0, completed: 0 };
         res.data.forEach(op => {
           if (op.status === 'PLANNING') sum.planning++;
-          if (op.status === 'IN_PROGRESS') sum.in_progress++;
+          if (['READY', 'STARTED', 'ARRIVED_PICKUP', 'PICKED_UP', 'IN_TRANSIT', 'ARRIVED_DESTINATION', 'DELIVERED'].includes(op.status)) sum.in_progress++;
           if (op.status === 'COMPLETED') sum.completed++;
         });
         setSummary(sum);
@@ -61,7 +61,12 @@ export default function OperationListPage() {
     switch (status) {
       case 'PLANNING': return <Badge variant="warning">Planning</Badge>;
       case 'READY': return <Badge variant="info">Ready</Badge>;
-      case 'IN_PROGRESS': return <Badge variant="primary">In Progress</Badge>;
+      case 'STARTED': return <Badge variant="primary">Started</Badge>;
+      case 'ARRIVED_PICKUP': return <Badge variant="primary">At Pickup</Badge>;
+      case 'PICKED_UP': return <Badge variant="primary">Picked Up</Badge>;
+      case 'IN_TRANSIT': return <Badge variant="primary">In Transit</Badge>;
+      case 'ARRIVED_DESTINATION': return <Badge variant="primary">At Destination</Badge>;
+      case 'DELIVERED': return <Badge variant="primary">Delivered</Badge>;
       case 'COMPLETED': return <Badge variant="success">Completed</Badge>;
       case 'CANCELLED': return <Badge variant="danger">Cancelled</Badge>;
       default: return <Badge variant="default">{status}</Badge>;
@@ -155,7 +160,12 @@ export default function OperationListPage() {
                 <option value="">Semua Status</option>
                 <option value="PLANNING">Planning</option>
                 <option value="READY">Ready</option>
-                <option value="IN_PROGRESS">In Progress</option>
+                <option value="STARTED">Started</option>
+                <option value="ARRIVED_PICKUP">At Pickup</option>
+                <option value="PICKED_UP">Picked Up</option>
+                <option value="IN_TRANSIT">In Transit</option>
+                <option value="ARRIVED_DESTINATION">At Destination</option>
+                <option value="DELIVERED">Delivered</option>
                 <option value="COMPLETED">Completed</option>
                 <option value="CANCELLED">Cancelled</option>
               </select>

@@ -8,7 +8,15 @@ export function Card({ children, className = '' }) {
   );
 }
 
-export function CardHeader({ title, subtitle, action, className = '' }) {
+export function CardHeader({ title, subtitle, action, children, className = '' }) {
+  if (children) {
+    return (
+      <div className={`pb-4 border-b border-slate-700/60 mb-5 ${className}`}>
+        {children}
+      </div>
+    );
+  }
+
   return (
     <div className={`flex items-center justify-between pb-4 border-b border-slate-700/60 mb-5 ${className}`}>
       <div>

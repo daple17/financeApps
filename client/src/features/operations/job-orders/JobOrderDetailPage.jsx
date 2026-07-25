@@ -8,6 +8,7 @@ import { Card, CardHeader } from '../../../components/ui/Card';
 import Button from '../../../components/ui/Button';
 import Badge from '../../../components/ui/Badge';
 import { Plus, Truck } from 'lucide-react';
+import JobOrderDocumentsTab from './documents/JobOrderDocumentsTab';
 
 export default function JobOrderDetailPage() {
   const { id } = useParams();
@@ -152,6 +153,17 @@ export default function JobOrderDetailPage() {
                 <div className="flex justify-between border-b border-slate-800/50 pb-2">
                   <span className="text-slate-400">Layanan</span>
                   <span className="text-white font-medium">{jobOrder.service_type || '-'}</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-800/50 pb-2">
+                  <span className="text-slate-400">Operational Status</span>
+                  <span className="text-white font-medium">
+                    <Badge variant={
+                      jobOrder.operational_completion_status === 'Ready' ? 'success' :
+                      jobOrder.operational_completion_status === 'Pending POD' ? 'warning' : 'default'
+                    }>
+                      {jobOrder.operational_completion_status}
+                    </Badge>
+                  </span>
                 </div>
               </div>
             </Card>
@@ -546,13 +558,17 @@ export default function JobOrderDetailPage() {
           </div>
         )}
 
-        {['COST', 'DOCUMENTS'].includes(activeTab) && (
+        {activeTab === 'COST' && (
           <Card>
             <div className="p-12 text-center">
               <h3 className="text-lg font-medium text-white mb-2">Segera Hadir</h3>
               <p className="text-slate-400 text-sm">Fitur {activeTab.charAt(0) + activeTab.slice(1).toLowerCase()} akan tersedia pada fase berikutnya.</p>
             </div>
           </Card>
+        )}
+
+        {activeTab === 'DOCUMENTS' && (
+          <JobOrderDocumentsTab jobOrderId={id} />
         )}
 
         {activeTab === 'OPERATIONS' && (

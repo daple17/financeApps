@@ -3,6 +3,7 @@ import api from './api';
 const BASE_URL = '/master-data/business-partners';
 const LOCATIONS_URL = '/master-data/locations';
 const LOGISTICS_URL = '/master-data/logistics';
+const RESOURCES_URL = '/master-data/resources';
 
 export const masterDataService = {
   // Get all partners (with optional role, search, status filters)
@@ -242,6 +243,46 @@ export const masterDataService = {
   },
   updateServiceType: async (id, data) => {
     const response = await api.put(`${LOGISTICS_URL}/service-types/${id}`, data);
+    return response.data;
+  },
+
+  // ------------------------------------------------------------------
+  // Resources (Driver & Vehicle)
+  // ------------------------------------------------------------------
+
+  // Drivers
+  getDrivers: async (params = {}) => {
+    const response = await api.get(`${RESOURCES_URL}/drivers`, { params });
+    return response.data;
+  },
+  getDriverById: async (id) => {
+    const response = await api.get(`${RESOURCES_URL}/drivers/${id}`);
+    return response.data;
+  },
+  createDriver: async (data) => {
+    const response = await api.post(`${RESOURCES_URL}/drivers`, data);
+    return response.data;
+  },
+  updateDriver: async (id, data) => {
+    const response = await api.put(`${RESOURCES_URL}/drivers/${id}`, data);
+    return response.data;
+  },
+
+  // Vehicles
+  getVehicles: async (params = {}) => {
+    const response = await api.get(`${RESOURCES_URL}/vehicles`, { params });
+    return response.data;
+  },
+  getVehicleById: async (id) => {
+    const response = await api.get(`${RESOURCES_URL}/vehicles/${id}`);
+    return response.data;
+  },
+  createVehicle: async (data) => {
+    const response = await api.post(`${RESOURCES_URL}/vehicles`, data);
+    return response.data;
+  },
+  updateVehicle: async (id, data) => {
+    const response = await api.put(`${RESOURCES_URL}/vehicles/${id}`, data);
     return response.data;
   }
 };

@@ -39,6 +39,8 @@ export default function Sidebar({ isOpen, onClose }) {
     { name: 'Container Type', path: '/master-data/container-types', icon: Box, permission: 'master_data.read', section: 'master_data' },
     { name: 'Cargo Unit', path: '/master-data/cargo-units', icon: Package, permission: 'master_data.read', section: 'master_data' },
     { name: 'Service Type', path: '/master-data/service-types', icon: Settings, permission: 'master_data.read', section: 'master_data' },
+    { name: 'Driver', path: '/master-data/drivers', icon: Users, permission: 'master_data.read', section: 'master_data' },
+    { name: 'Vehicle', path: '/master-data/vehicles', icon: Truck, permission: 'master_data.read', section: 'master_data' },
     { name: 'Chart of Accounts', path: '/coa', icon: FolderTree, permission: 'coa.read', section: 'keuangan' },
     { name: 'Transaksi', path: '/transactions', icon: Receipt, permission: 'transactions.read', section: 'keuangan' },
     { name: 'Approval Flow', path: '/approvals', icon: CheckSquare, permission: 'approvals.read', section: 'keuangan' },

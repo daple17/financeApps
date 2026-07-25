@@ -206,25 +206,124 @@ class OperationModel {
     }
   }
 
-  static async updateStatus(id, status, updatedBy, notes = null) {
+  static async updateStatus(id, status, updatedBy, notes = null, cancellationReason = null) {
     const conn = await db.getConnection();
     try {
       await conn.beginTransaction();
       
       const [oldRows] = await conn.query('SELECT status FROM operations WHERE id = ?', [id]);
-      const oldStatus = oldRows[0]?.status;
+      if (oldRows.length === 0) {
+        throw new Error('Operation not found');
+      }
+      const oldStatus = oldRows[0].status;
+
+      // Validate Transition Rules
+      const validTransitions = {
+        'PLANNING': ['READY', 'CANCELLED'],
+        'READY': ['STARTED', 'CANCELLED'],
+        'STARTED': ['ARRIVED_PICKUP'],
+        'ARRIVED_PICKUP': ['PICKED_UP'],
+        'PICKED_UP': ['IN_TRANSIT'],
+        'IN_TRANSIT': ['ARRIVED_DESTINATION'],
+        'ARRIVED_DESTINATION': ['DELIVERED'],
+        'DELIVERED': ['COMPLETED']
+      };
+
+      if (oldStatus !== status) {
+        const allowed = validTransitions[oldStatus] || [];
+        if (!allowed.includes(status)) {
+          throw new Error(`Invalid status transition from ${oldStatus} to ${status}`);
+        }
+      }
+
+      // Ready validation
+      if (status === 'READY') {
+        const [assignments] = await conn.query(
+          `SELECT id FROM operation_resource_assignments WHERE operation_id = ? AND status = 'ASSIGNED'`,
+          [id]
+        );
+        if (assignments.length === 0) {
+          throw new Error('Driver and Vehicle must be assigned before this Operation can be marked Ready.');
+        }
+      }
+
+      // POD validation for COMPLETED
+      if (status === 'COMPLETED') {
+        const [pods] = await conn.query(
+          `SELECT status FROM operation_pods WHERE operation_id = ? ORDER BY id DESC LIMIT 1`,
+          [id]
+        );
+        if (pods.length === 0 || !['SUBMITTED', 'VERIFIED'].includes(pods[0].status)) {
+          throw new Error('Operation belum dapat diselesaikan karena Proof of Delivery belum disubmit.');
+        }
+      }
+
+      // Build update query
+      let updateFields = ['status = ?', 'updated_by = ?'];
+      let updateValues = [status, updatedBy];
+
+      switch (status) {
+        case 'STARTED':
+          updateFields.push('actual_start_at = CURRENT_TIMESTAMP');
+          break;
+        case 'ARRIVED_PICKUP':
+          updateFields.push('arrived_pickup_at = CURRENT_TIMESTAMP');
+          break;
+        case 'PICKED_UP':
+          updateFields.push('picked_up_at = CURRENT_TIMESTAMP');
+          break;
+        case 'IN_TRANSIT':
+          updateFields.push('in_transit_at = CURRENT_TIMESTAMP');
+          break;
+        case 'ARRIVED_DESTINATION':
+          updateFields.push('arrived_destination_at = CURRENT_TIMESTAMP');
+          break;
+        case 'DELIVERED':
+          updateFields.push('delivered_at = CURRENT_TIMESTAMP');
+          break;
+        case 'COMPLETED':
+          updateFields.push('actual_completion_at = CURRENT_TIMESTAMP');
+          break;
+        case 'CANCELLED':
+          if (!cancellationReason) {
+            throw new Error('Cancellation Reason is required');
+          }
+          updateFields.push('cancelled_at = CURRENT_TIMESTAMP', 'cancelled_by = ?', 'cancellation_reason = ?');
+          updateValues.push(updatedBy, cancellationReason);
+          break;
+      }
+
+      updateValues.push(id);
 
       await conn.query(
-        `UPDATE operations SET status = ?, updated_by = ? WHERE id = ?`,
-        [status, updatedBy, id]
+        `UPDATE operations SET ${updateFields.join(', ')} WHERE id = ?`,
+        updateValues
       );
+
+      // Handle COMPLETED or CANCELLED: release resources
+      if (status === 'COMPLETED' || status === 'CANCELLED') {
+        const [assignments] = await conn.query(
+          `SELECT id, driver_id, vehicle_id FROM operation_resource_assignments WHERE operation_id = ? AND status = 'ASSIGNED'`,
+          [id]
+        );
+        if (assignments.length > 0) {
+          const assignment = assignments[0];
+          await conn.query(
+            `UPDATE operation_resource_assignments SET status = 'RELEASED', released_at = CURRENT_TIMESTAMP, released_by = ? WHERE id = ?`,
+            [updatedBy, assignment.id]
+          );
+          await conn.query(`UPDATE drivers SET availability = 'AVAILABLE' WHERE id = ?`, [assignment.driver_id]);
+          await conn.query(`UPDATE vehicles SET status = 'AVAILABLE' WHERE id = ?`, [assignment.vehicle_id]);
+          await this.logEvent(conn, id, 'RESOURCE_RELEASED', updatedBy, `Released due to ${status}`);
+        }
+      }
 
       await this.logEvent(
         conn,
         id,
-        'STATUS_CHANGED',
+        status === 'CANCELLED' ? 'CANCELLED' : 'STATUS_CHANGED',
         updatedBy,
-        notes || `Status changed from ${oldStatus} to ${status}`,
+        notes || (cancellationReason ? `Cancelled: ${cancellationReason}` : `Status changed from ${oldStatus} to ${status}`),
         oldStatus,
         status
       );
@@ -278,6 +377,132 @@ class OperationModel {
       remaining: remaining > 0 ? remaining : 0,
       unit
     };
+  }
+
+  static async getAssignment(operationId) {
+    const query = `
+      SELECT a.*, 
+             d.driver_name, d.phone_number, d.license_type,
+             v.plate_number, v.capacity_weight, v.capacity_volume, v.ownership_type,
+             vt.name as vehicle_type_name
+      FROM operation_resource_assignments a
+      JOIN drivers d ON a.driver_id = d.id
+      JOIN vehicles v ON a.vehicle_id = v.id
+      LEFT JOIN vehicle_types vt ON v.vehicle_type_id = vt.id
+      WHERE a.operation_id = ? AND a.status = 'ASSIGNED'
+      ORDER BY a.assigned_at DESC LIMIT 1
+    `;
+    const [rows] = await db.query(query, [operationId]);
+    return rows[0] || null;
+  }
+
+  static async assignResource(operationId, driverId, vehicleId, assignedBy) {
+    const conn = await db.getConnection();
+    try {
+      await conn.beginTransaction();
+
+      const [opRows] = await conn.query('SELECT status FROM operations WHERE id = ?', [operationId]);
+      if (opRows.length === 0) throw new Error('Operation not found.');
+      if (!['PLANNING', 'READY'].includes(opRows[0].status)) {
+        throw new Error('Resource can only be assigned during Planning or Ready status.');
+      }
+
+      // Ensure no existing active assignment for this operation
+      const [existing] = await conn.query(
+        `SELECT id FROM operation_resource_assignments WHERE operation_id = ? AND status = 'ASSIGNED'`,
+        [operationId]
+      );
+      if (existing.length > 0) {
+        throw new Error('Operation already has an active assignment.');
+      }
+
+      // Ensure vehicle is not assigned to another active operation
+      const [vehicleCheck] = await conn.query(
+        `SELECT a.id FROM operation_resource_assignments a
+         JOIN operations o ON a.operation_id = o.id
+         WHERE a.vehicle_id = ? AND a.status = 'ASSIGNED' AND o.status NOT IN ('COMPLETED', 'CANCELLED')`,
+        [vehicleId]
+      );
+      if (vehicleCheck.length > 0) {
+        throw new Error('Vehicle is currently assigned to another active operation.');
+      }
+
+      // Ensure driver is not assigned to another active operation
+      const [driverCheck] = await conn.query(
+        `SELECT a.id FROM operation_resource_assignments a
+         JOIN operations o ON a.operation_id = o.id
+         WHERE a.driver_id = ? AND a.status = 'ASSIGNED' AND o.status NOT IN ('COMPLETED', 'CANCELLED')`,
+        [driverId]
+      );
+      if (driverCheck.length > 0) {
+        throw new Error('Driver is currently assigned to another active operation.');
+      }
+
+      // Assign resource
+      await conn.query(
+        `INSERT INTO operation_resource_assignments (operation_id, driver_id, vehicle_id, assigned_by) 
+         VALUES (?, ?, ?, ?)`,
+        [operationId, driverId, vehicleId, assignedBy]
+      );
+
+      // Update statuses
+      await conn.query(`UPDATE drivers SET availability = 'ASSIGNED' WHERE id = ?`, [driverId]);
+      await conn.query(`UPDATE vehicles SET status = 'ASSIGNED' WHERE id = ?`, [vehicleId]);
+
+      await this.logEvent(conn, operationId, 'RESOURCE_ASSIGNED', assignedBy, `Assigned Driver ID: ${driverId}, Vehicle ID: ${vehicleId}`);
+
+      await conn.commit();
+      return true;
+    } catch (error) {
+      await conn.rollback();
+      throw error;
+    } finally {
+      conn.release();
+    }
+  }
+
+  static async releaseResource(operationId, releasedBy) {
+    const conn = await db.getConnection();
+    try {
+      await conn.beginTransaction();
+
+      const [opRows] = await conn.query('SELECT status FROM operations WHERE id = ?', [operationId]);
+      if (opRows.length > 0 && !['PLANNING', 'READY'].includes(opRows[0].status)) {
+        throw new Error('Resource can only be released during Planning or Ready status.');
+      }
+
+      const [assignments] = await conn.query(
+        `SELECT id, driver_id, vehicle_id FROM operation_resource_assignments 
+         WHERE operation_id = ? AND status = 'ASSIGNED'`,
+        [operationId]
+      );
+
+      if (assignments.length === 0) {
+        throw new Error('No active assignment found for this operation.');
+      }
+
+      const assignment = assignments[0];
+
+      await conn.query(
+        `UPDATE operation_resource_assignments 
+         SET status = 'RELEASED', released_at = CURRENT_TIMESTAMP, released_by = ? 
+         WHERE id = ?`,
+        [releasedBy, assignment.id]
+      );
+
+      await conn.query(`UPDATE drivers SET availability = 'AVAILABLE' WHERE id = ?`, [assignment.driver_id]);
+      await conn.query(`UPDATE vehicles SET status = 'AVAILABLE' WHERE id = ? AND status = 'ASSIGNED'`, [assignment.vehicle_id]);
+
+      await this.logEvent(conn, operationId, 'RESOURCE_RELEASED', releasedBy, `Released Driver ID: ${assignment.driver_id}, Vehicle ID: ${assignment.vehicle_id}`);
+
+      await conn.commit();
+      return true;
+    } catch (error) {
+      await conn.rollback();
+      throw error;
+    } finally {
+      conn.release();
+    }
   }
 }
 

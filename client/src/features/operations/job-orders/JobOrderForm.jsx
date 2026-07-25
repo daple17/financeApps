@@ -64,8 +64,8 @@ export default function JobOrderForm({ initialData = null, isEdit = false }) {
           masterDataService.getCargoUnits({ status: 'ACTIVE' }),
           masterDataService.getVehicleTypes({ status: 'ACTIVE' }),
           masterDataService.getContainerTypes({ status: 'ACTIVE' }),
-          masterDataService.getPorts({ status: 'ACTIVE' }),
-          masterDataService.getWarehouses({ status: 'ACTIVE' })
+          masterDataService.getAllPorts({ status: 'ACTIVE' }),
+          masterDataService.getAllWarehouses({ status: 'ACTIVE' })
         ]);
         setCustomers(custData);
         setServiceTypes(svcData);
@@ -510,7 +510,7 @@ export default function JobOrderForm({ initialData = null, isEdit = false }) {
               <label className="text-xs font-medium text-slate-300">Customer (Master Data)</label>
               <select className="bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500"
                 name="customer_id" value={formData.customer_id || ''} onChange={handleChange}>
-                <option value="">-- Ketik Manual --</option>
+                <option value="">-- Pilih Opsi --</option>
                 {customers.map(c => (
                   <option key={c.id} value={c.id}>{c.partner_code} - {c.partner_name}</option>
                 ))}
@@ -524,7 +524,7 @@ export default function JobOrderForm({ initialData = null, isEdit = false }) {
               <label className="text-xs font-medium text-slate-300">PIC Customer (Master Data)</label>
               <select className="bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500"
                 name="customer_contact_id" value={formData.customer_contact_id || ''} onChange={handleChange} disabled={!formData.customer_id}>
-                <option value="">-- Ketik Manual --</option>
+                <option value="">-- Pilih Opsi --</option>
                 {customerContacts.map(c => (
                   <option key={c.id} value={c.id}>{c.name} {c.is_primary ? '(Primary)' : ''}</option>
                 ))}
@@ -538,7 +538,7 @@ export default function JobOrderForm({ initialData = null, isEdit = false }) {
               <label className="text-xs font-medium text-slate-300">Jenis Layanan</label>
               <select className="bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500"
                 name="service_type_id" value={formData.service_type_id || ''} onChange={handleChange} required>
-                <option value="">Pilih Layanan</option>
+                <option value="">-- Pilih Opsi --</option>
                 {formData.service_type_id && !serviceTypes.some(s => s.id === Number(formData.service_type_id)) && (
                   <option value={formData.service_type_id}>{formData.service_type} (Inactive)</option>
                 )}
@@ -576,7 +576,7 @@ export default function JobOrderForm({ initialData = null, isEdit = false }) {
                   <label className="text-xs font-medium text-slate-300">Pilih {formData.pickup_location_type === 'PORT' ? 'Port' : 'Warehouse'}</label>
                   <select className="bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500"
                     name="pickup_reference_id" value={formData.pickup_reference_id || ''} onChange={handleChange}>
-                    <option value="">Pilih Lokasi</option>
+                    <option value="">-- Pilih Opsi --</option>
                     {formData.pickup_reference_id && !(formData.pickup_location_type === 'PORT' ? ports : warehouses).some(l => l.id === Number(formData.pickup_reference_id)) && (
                       <option value={formData.pickup_reference_id}>{formData.pickup_location} (Inactive)</option>
                     )}
@@ -616,7 +616,7 @@ export default function JobOrderForm({ initialData = null, isEdit = false }) {
                   <label className="text-xs font-medium text-slate-300">Pilih {formData.delivery_location_type === 'PORT' ? 'Port' : 'Warehouse'}</label>
                   <select className="bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500"
                     name="delivery_reference_id" value={formData.delivery_reference_id || ''} onChange={handleChange}>
-                    <option value="">Pilih Lokasi</option>
+                    <option value="">-- Pilih Opsi --</option>
                     {formData.delivery_reference_id && !(formData.delivery_location_type === 'PORT' ? ports : warehouses).some(l => l.id === Number(formData.delivery_reference_id)) && (
                       <option value={formData.delivery_reference_id}>{formData.delivery_location} (Inactive)</option>
                     )}
@@ -659,7 +659,7 @@ export default function JobOrderForm({ initialData = null, isEdit = false }) {
               <label className="text-xs font-medium text-slate-300">Unit</label>
               <select className="bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500"
                 name="cargo_unit_id" value={formData.cargo_unit_id || ''} onChange={handleChange}>
-                <option value="">Pilih Unit</option>
+                <option value="">-- Pilih Opsi --</option>
                 {formData.cargo_unit_id && !cargoUnits.some(u => u.id === Number(formData.cargo_unit_id)) && (
                   <option value={formData.cargo_unit_id}>{formData.cargo_unit} (Inactive)</option>
                 )}
@@ -684,7 +684,7 @@ export default function JobOrderForm({ initialData = null, isEdit = false }) {
               <label className="text-xs font-medium text-slate-300">Jenis Kendaraan</label>
               <select className="bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500"
                 name="vehicle_type_id" value={formData.vehicle_type_id || ''} onChange={handleChange}>
-                <option value="">Pilih Kendaraan</option>
+                <option value="">-- Pilih Opsi --</option>
                 {formData.vehicle_type_id && !vehicleTypes.some(v => v.id === Number(formData.vehicle_type_id)) && (
                   <option value={formData.vehicle_type_id}>{formData.vehicle_type_requirement} (Inactive)</option>
                 )}
@@ -712,7 +712,7 @@ export default function JobOrderForm({ initialData = null, isEdit = false }) {
                     <label className="text-xs font-medium text-slate-300">Jenis Dokumen Pabean</label>
                     <select className="bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500"
                       name="customs_document_type" value={formData.export_details.customs_document_type || ''} onChange={handleExportDetailChange}>
-                      <option value="">Pilih Dokumen</option>
+                      <option value="">-- Pilih Opsi --</option>
                       <option value="PEB_BC_3_0">PEB BC 3.0</option>
                       <option value="PEB_BC_3_1">PEB BC 3.1</option>
                       <option value="PEB_BC_3_3">PEB BC 3.3</option>
@@ -766,7 +766,7 @@ export default function JobOrderForm({ initialData = null, isEdit = false }) {
                     <label className="text-xs font-medium text-slate-300">Party / Volume</label>
                     <select className="bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500"
                       name="party_volume_type" value={formData.export_details.party_volume_type || ''} onChange={handleExportDetailChange}>
-                      <option value="">Pilih Type</option>
+                      <option value="">-- Pilih Opsi --</option>
                       <option value="FCL">FCL</option>
                       <option value="LCL/BB">LCL/BB</option>
                     </select>
@@ -802,7 +802,7 @@ export default function JobOrderForm({ initialData = null, isEdit = false }) {
                     <label className="text-xs font-medium text-slate-300">Jenis Dokumen Pabean</label>
                     <select className="bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500"
                       name="customs_document_type" value={formData.import_details.customs_document_type || ''} onChange={handleImportDetailChange}>
-                      <option value="">Pilih Dokumen</option>
+                      <option value="">-- Pilih Opsi --</option>
                       <option value="PIB_BC_1_6">PIB BC 1.6</option>
                       <option value="PIB_BC_2_0">PIB BC 2.0</option>
                       <option value="PIB_BC_2_8">PIB BC 2.8</option>
@@ -857,7 +857,7 @@ export default function JobOrderForm({ initialData = null, isEdit = false }) {
                     <label className="text-xs font-medium text-slate-300">Party / Volume</label>
                     <select className="bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500"
                       name="party_volume_type" value={formData.import_details.party_volume_type || ''} onChange={handleImportDetailChange}>
-                      <option value="">Pilih Type</option>
+                      <option value="">-- Pilih Opsi --</option>
                       <option value="FCL">FCL</option>
                       <option value="LCL/BB">LCL/BB</option>
                     </select>
@@ -915,7 +915,7 @@ export default function JobOrderForm({ initialData = null, isEdit = false }) {
                     <label className="text-xs font-medium text-slate-300">Party / Volume</label>
                     <select className="bg-slate-900 border border-slate-700 text-slate-100 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500"
                       name="party_volume_type" value={formData.trucking_details.party_volume_type || ''} onChange={handleTruckingDetailChange}>
-                      <option value="">Pilih Type</option>
+                      <option value="">-- Pilih Opsi --</option>
                       <option value="FCL">FCL</option>
                       <option value="LCL/BB">LCL / BB</option>
                     </select>
@@ -949,7 +949,7 @@ export default function JobOrderForm({ initialData = null, isEdit = false }) {
                                 handleTruckingContainerChange(idx, 'type', selected ? selected.name : '');
                               }}
                             >
-                              <option value="">Pilih Tipe</option>
+                              <option value="">-- Pilih Opsi --</option>
                               {containerTypes.map(c => (
                                 <option key={c.id} value={c.id}>{c.name}</option>
                               ))}

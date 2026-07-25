@@ -56,12 +56,12 @@ exports.updateOperation = async (req, res) => {
 
 exports.updateOperationStatus = async (req, res) => {
   try {
-    const { status, notes } = req.body;
-    await OperationModel.updateStatus(req.params.id, status, req.user.id, notes);
+    const { status, notes, cancellation_reason } = req.body;
+    await OperationModel.updateStatus(req.params.id, status, req.user.id, notes, cancellation_reason);
     res.json({ status: 'success', message: 'Status operation berhasil diupdate' });
   } catch (error) {
     console.error('Error in updateOperationStatus:', error);
-    res.status(500).json({ status: 'error', message: 'Gagal mengupdate status' });
+    res.status(400).json({ status: 'error', message: error.message || 'Gagal mengupdate status' });
   }
 };
 
@@ -95,5 +95,39 @@ exports.getAllocationBalance = async (req, res) => {
   } catch (error) {
     console.error('Error in getAllocationBalance:', error);
     res.status(500).json({ status: 'error', message: 'Gagal mengambil data balance allocation' });
+  }
+};
+
+exports.getAssignment = async (req, res) => {
+  try {
+    const assignment = await OperationModel.getAssignment(req.params.id);
+    res.json({ status: 'success', data: assignment });
+  } catch (error) {
+    console.error('Error in getAssignment:', error);
+    res.status(500).json({ status: 'error', message: 'Gagal mengambil data resource assignment' });
+  }
+};
+
+exports.assignResource = async (req, res) => {
+  try {
+    const { driver_id, vehicle_id } = req.body;
+    if (!driver_id || !vehicle_id) {
+      return res.status(400).json({ status: 'error', message: 'Driver dan Vehicle harus diisi' });
+    }
+    await OperationModel.assignResource(req.params.id, driver_id, vehicle_id, req.user.id);
+    res.json({ status: 'success', message: 'Resource berhasil di-assign' });
+  } catch (error) {
+    console.error('Error in assignResource:', error);
+    res.status(400).json({ status: 'error', message: error.message || 'Gagal assign resource' });
+  }
+};
+
+exports.releaseResource = async (req, res) => {
+  try {
+    await OperationModel.releaseResource(req.params.id, req.user.id);
+    res.json({ status: 'success', message: 'Resource berhasil di-release' });
+  } catch (error) {
+    console.error('Error in releaseResource:', error);
+    res.status(400).json({ status: 'error', message: error.message || 'Gagal release resource' });
   }
 };

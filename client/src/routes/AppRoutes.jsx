@@ -36,6 +36,10 @@ import CargoUnitList from '../features/master-data/references/CargoUnitList';
 import CargoUnitForm from '../features/master-data/references/CargoUnitForm';
 import ServiceTypeList from '../features/master-data/references/ServiceTypeList';
 import ServiceTypeForm from '../features/master-data/references/ServiceTypeForm';
+import DriverList from '../features/master-data/resources/DriverList';
+import DriverForm from '../features/master-data/resources/DriverForm';
+import VehicleList from '../features/master-data/resources/VehicleList';
+import VehicleForm from '../features/master-data/resources/VehicleForm';
 import { Briefcase, Users, UserCheck } from 'lucide-react';
 
 export default function AppRoutes() {
@@ -150,6 +154,14 @@ export default function AppRoutes() {
               <Route path="/master-data/service-types" element={<ServiceTypeList />} />
               <Route path="/master-data/service-types/create" element={<ServiceTypeForm />} />
               <Route path="/master-data/service-types/:id/edit" element={<ServiceTypeForm />} />
+
+              {/* Resources */}
+              <Route path="/master-data/drivers" element={<DriverList />} />
+              <Route path="/master-data/drivers/create" element={<DriverForm />} />
+              <Route path="/master-data/drivers/:id/edit" element={<DriverForm />} />
+              <Route path="/master-data/vehicles" element={<VehicleList />} />
+              <Route path="/master-data/vehicles/create" element={<VehicleForm />} />
+              <Route path="/master-data/vehicles/:id/edit" element={<VehicleForm />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

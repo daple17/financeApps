@@ -461,9 +461,38 @@ class JobOrderModel {
     `;
     const [activityRows] = await db.query(activityQuery, [id]);
 
+    // Check operational completion readiness
+    let operational_completion_status = 'Pending Execution';
+    const [ops] = await db.query('SELECT id, status FROM operations WHERE job_order_id = ? AND status != "CANCELLED"', [id]);
+    
+    if (ops.length > 0) {
+      let allCompleted = true;
+      let allPodsSubmitted = true;
+      
+      for (const op of ops) {
+        if (op.status !== 'COMPLETED') {
+          allCompleted = false;
+        }
+        
+        const [pods] = await db.query('SELECT status FROM operation_pods WHERE operation_id = ? ORDER BY id DESC LIMIT 1', [op.id]);
+        if (pods.length === 0 || !['SUBMITTED', 'VERIFIED'].includes(pods[0].status)) {
+          allPodsSubmitted = false;
+        }
+      }
+      
+      if (allCompleted && allPodsSubmitted) {
+        operational_completion_status = 'Ready';
+      } else if (allCompleted && !allPodsSubmitted) {
+        operational_completion_status = 'Pending POD';
+      } else {
+        operational_completion_status = 'In Progress';
+      }
+    }
+
     return {
       ...jobOrder,
-      activities: activityRows
+      activities: activityRows,
+      operational_completion_status
     };
   }
 

@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit2, History, Briefcase, MapPin, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Edit2, History, Briefcase, MapPin, CheckCircle, AlertCircle, RefreshCw, User, Truck, LogOut } from 'lucide-react';
 import operationService from '../../../services/operationService';
+import AssignResourceModal from './AssignResourceModal';
 import { useToast } from '../../../context/ToastContext';
 import { Card, CardHeader } from '../../../components/ui/Card';
 import Button from '../../../components/ui/Button';
 import Badge from '../../../components/ui/Badge';
+import OperationDocumentsTab from './documents/OperationDocumentsTab';
 
 export default function OperationDetailPage() {
   const { id } = useParams();
@@ -14,12 +16,18 @@ export default function OperationDetailPage() {
   
   const [operation, setOperation] = useState(null);
   const [events, setEvents] = useState([]);
+  const [assignment, setAssignment] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [isReleasing, setIsReleasing] = useState(false);
+  const [activeTab, setActiveTab] = useState('OVERVIEW');
+  
   // Status update modal state
-  const [showStatusModal, setShowStatusModal] = useState(false);
-  const [newStatus, setNewStatus] = useState('');
-  const [statusNotes, setStatusNotes] = useState('');
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancellationReason, setCancellationReason] = useState('');
+  const [nextAction, setNextAction] = useState(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   useEffect(() => {
@@ -29,12 +37,14 @@ export default function OperationDetailPage() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [opRes, evRes] = await Promise.all([
+      const [opRes, evRes, assignRes] = await Promise.all([
         operationService.getById(id),
-        operationService.getEvents(id)
+        operationService.getEvents(id),
+        operationService.getAssignment(id)
       ]);
       if (opRes.status === 'success') setOperation(opRes.data);
       if (evRes.status === 'success') setEvents(evRes.data);
+      if (assignRes.status === 'success') setAssignment(assignRes.data);
     } catch (error) {
       showError('Gagal memuat detail operation');
     } finally {
@@ -42,18 +52,32 @@ export default function OperationDetailPage() {
     }
   };
 
-  const handleUpdateStatus = async () => {
-    if (!newStatus) return;
+  const handleUpdateStatus = async (status, notes = '', reason = '') => {
     setIsUpdatingStatus(true);
     try {
-      await operationService.updateStatus(id, newStatus, statusNotes);
-      showSuccess('Status berhasil diupdate');
-      setShowStatusModal(false);
+      await operationService.updateStatus(id, status, notes, reason);
+      showSuccess(`Berhasil update status ke ${status}`);
+      setShowConfirmModal(false);
+      setShowCancelModal(false);
       fetchData();
     } catch (error) {
-      showError('Gagal mengupdate status');
+      showError(error.response?.data?.message || 'Gagal mengupdate status');
     } finally {
       setIsUpdatingStatus(false);
+    }
+  };
+
+  const handleReleaseResource = async () => {
+    if (!window.confirm('Yakin ingin merilis (release) driver dan kendaraan ini dari operation?')) return;
+    setIsReleasing(true);
+    try {
+      await operationService.releaseResource(id);
+      showSuccess('Resource berhasil di-release');
+      fetchData();
+    } catch (error) {
+      showError(error.response?.data?.message || 'Gagal merilis resource');
+    } finally {
+      setIsReleasing(false);
     }
   };
 
@@ -69,12 +93,33 @@ export default function OperationDetailPage() {
     switch (status) {
       case 'PLANNING': return <Badge variant="warning">Planning</Badge>;
       case 'READY': return <Badge variant="info">Ready</Badge>;
-      case 'IN_PROGRESS': return <Badge variant="primary">In Progress</Badge>;
+      case 'STARTED': return <Badge variant="primary">Started</Badge>;
+      case 'ARRIVED_PICKUP': return <Badge variant="primary">At Pickup</Badge>;
+      case 'PICKED_UP': return <Badge variant="primary">Picked Up</Badge>;
+      case 'IN_TRANSIT': return <Badge variant="primary">In Transit</Badge>;
+      case 'ARRIVED_DESTINATION': return <Badge variant="primary">At Destination</Badge>;
+      case 'DELIVERED': return <Badge variant="primary">Delivered</Badge>;
       case 'COMPLETED': return <Badge variant="success">Completed</Badge>;
       case 'CANCELLED': return <Badge variant="danger">Cancelled</Badge>;
       default: return <Badge variant="default">{status}</Badge>;
     }
   };
+
+  const getContextualAction = (status) => {
+    switch (status) {
+      case 'PLANNING': return { label: 'Mark as Ready', next: 'READY' };
+      case 'READY': return { label: 'Start Operation', next: 'STARTED' };
+      case 'STARTED': return { label: 'Arrived at Pickup', next: 'ARRIVED_PICKUP' };
+      case 'ARRIVED_PICKUP': return { label: 'Confirm Pickup', next: 'PICKED_UP' };
+      case 'PICKED_UP': return { label: 'Start Transit', next: 'IN_TRANSIT' };
+      case 'IN_TRANSIT': return { label: 'Arrived at Destination', next: 'ARRIVED_DESTINATION' };
+      case 'ARRIVED_DESTINATION': return { label: 'Confirm Delivery', next: 'DELIVERED' };
+      case 'DELIVERED': return { label: 'Complete Operation', next: 'COMPLETED' };
+      default: return null;
+    }
+  };
+
+  const currentAction = operation ? getContextualAction(operation.status) : null;
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '-';
@@ -100,26 +145,53 @@ export default function OperationDetailPage() {
           </div>
         </div>
         <div className="flex gap-3">
-          <Button variant="secondary" onClick={() => {
-            setNewStatus(operation.status);
-            setStatusNotes('');
-            setShowStatusModal(true);
-          }}>
-            <RefreshCw className="w-4 h-4 mr-2" /> Update Status
-          </Button>
-          <Button variant="primary" onClick={() => navigate(`/operations/${id}/edit`)}>
+          {currentAction && (
+            <Button variant="primary" onClick={() => {
+              setNextAction(currentAction);
+              setShowConfirmModal(true);
+            }}>
+              <CheckCircle className="w-4 h-4 mr-2" /> {currentAction.label}
+            </Button>
+          )}
+          {(!['COMPLETED', 'CANCELLED'].includes(operation.status)) && (
+            <Button variant="danger" onClick={() => {
+              setCancellationReason('');
+              setShowCancelModal(true);
+            }}>
+              Cancel Operation
+            </Button>
+          )}
+          <Button variant="secondary" onClick={() => navigate(`/operations/${id}/edit`)}>
             <Edit2 className="w-4 h-4 mr-2" /> Edit Operation
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
+      <div className="border-b border-slate-800">
+        <nav className="-mb-px flex space-x-6 overflow-x-auto">
+          {['OVERVIEW', 'DOCUMENTS'].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === tab
+                  ? 'border-sky-500 text-sky-400'
+                  : 'border-transparent text-slate-400 hover:text-slate-300 hover:border-slate-700'
+              }`}
+            >
+              {tab.charAt(0) + tab.slice(1).toLowerCase()}
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      <div className="mt-6">
+        {activeTab === 'OVERVIEW' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Main Content */}
+            <div className="lg:col-span-2 space-y-6">
           <Card>
-            <CardHeader>
-              <h2 className="text-lg font-semibold text-white">Operation Summary</h2>
-            </CardHeader>
+            <CardHeader title="Operation Summary" />
             <div className="p-1 grid grid-cols-2 md:grid-cols-4 gap-6">
               <div>
                 <p className="text-xs text-slate-500 uppercase font-semibold">Priority</p>
@@ -157,9 +229,7 @@ export default function OperationDetailPage() {
           </Card>
 
           <Card>
-            <CardHeader>
-              <h2 className="text-lg font-semibold text-white">Job Order Information</h2>
-            </CardHeader>
+            <CardHeader title="Job Order Information" />
             <div className="p-1">
               <div className="flex justify-between items-start mb-6">
                 <div>
@@ -220,15 +290,57 @@ export default function OperationDetailPage() {
           </Card>
 
           <Card>
-            <CardHeader>
-              <h2 className="text-lg font-semibold text-white">Assignment & Execution (Phase 3.3)</h2>
-            </CardHeader>
-            <div className="p-8 flex flex-col items-center justify-center text-center bg-slate-900/30 rounded-xl border border-slate-800/50">
-              <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center mb-3">
-                <AlertCircle className="w-6 h-6 text-slate-400" />
-              </div>
-              <h3 className="text-sm font-medium text-slate-300">Belum ada Driver atau Kendaraan yang di-assign</h3>
-              <p className="text-xs text-slate-500 mt-1 max-w-md">Fitur Driver, Vehicle Assignment, Tracking, dan Proof of Delivery akan diimplementasikan pada fase berikutnya.</p>
+            <CardHeader 
+              title="Resource Assignment" 
+              action={
+                (!assignment && ['PLANNING', 'READY'].includes(operation.status)) && (
+                  <Button variant="primary" size="sm" onClick={() => setShowAssignModal(true)}>
+                    Assign Resource
+                  </Button>
+                )
+              } 
+            />
+            <div className="p-4 bg-slate-900/30 rounded-xl border border-slate-800/50">
+              {!assignment ? (
+                <div className="flex flex-col items-center justify-center text-center py-6">
+                  <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center mb-3">
+                    <AlertCircle className="w-6 h-6 text-slate-400" />
+                  </div>
+                  <h3 className="text-sm font-medium text-slate-300">Belum ada Resource yang di-assign</h3>
+                  <p className="text-xs text-slate-500 mt-1 max-w-md">Silakan assign driver dan kendaraan untuk operation ini.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="flex items-start gap-3 p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
+                    <div className="p-2 rounded-lg bg-sky-500/10 text-sky-400">
+                      <User className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-xs text-slate-500 uppercase font-semibold mb-1">Assigned Driver</div>
+                      <div className="text-sm font-medium text-white">{assignment.driver_name}</div>
+                      <div className="text-xs text-slate-400 mt-0.5">{assignment.phone_number || 'No Phone'} • {assignment.license_type || 'No License Type'}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
+                    <div className="p-2 rounded-lg bg-sky-500/10 text-sky-400">
+                      <Truck className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-xs text-slate-500 uppercase font-semibold mb-1">Assigned Vehicle</div>
+                      <div className="text-sm font-medium text-white">{assignment.plate_number}</div>
+                      <div className="text-xs text-slate-400 mt-0.5">{assignment.vehicle_type_name || 'Unknown Type'} • {assignment.capacity_weight ? `${assignment.capacity_weight} kg` : 'No Capacity'}</div>
+                    </div>
+                  </div>
+                  
+                  {['PLANNING', 'READY'].includes(operation.status) && (
+                    <div className="md:col-span-2 flex justify-end">
+                      <Button variant="danger" size="sm" onClick={handleReleaseResource} isLoading={isReleasing}>
+                        <LogOut className="w-4 h-4 mr-2" /> Release Resource
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </Card>
         </div>
@@ -236,12 +348,58 @@ export default function OperationDetailPage() {
         {/* Sidebar / Timeline */}
         <div className="space-y-6">
           <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <History className="w-5 h-5 text-sky-400" />
-                <h2 className="text-lg font-semibold text-white">Operation Timeline</h2>
+            <CardHeader title="Execution Progress" />
+            <div className="p-4">
+              <div className="space-y-4">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-slate-400">Current Status</span>
+                  <span className="font-bold">{getStatusBadge(operation.status)}</span>
+                </div>
+                <hr className="border-slate-800" />
+                <div className="relative border-l-2 border-slate-800 ml-2 space-y-4 pt-2">
+                  {[
+                    { label: 'Planning', ts: operation.created_at, active: true },
+                    { label: 'Ready', ts: null, active: !['PLANNING'].includes(operation.status) },
+                    { label: 'Started', ts: operation.actual_start_at, active: operation.actual_start_at != null },
+                    { label: 'Arrived Pickup', ts: operation.arrived_pickup_at, active: operation.arrived_pickup_at != null },
+                    { label: 'Picked Up', ts: operation.picked_up_at, active: operation.picked_up_at != null },
+                    { label: 'In Transit', ts: operation.in_transit_at, active: operation.in_transit_at != null },
+                    { label: 'Arrived Destination', ts: operation.arrived_destination_at, active: operation.arrived_destination_at != null },
+                    { label: 'Delivered', ts: operation.delivered_at, active: operation.delivered_at != null },
+                    { label: 'Completed', ts: operation.actual_completion_at, active: operation.actual_completion_at != null },
+                  ].map((step, idx) => (
+                    <div key={idx} className="relative pl-6">
+                      <div className={`absolute -left-[9px] top-1 w-4 h-4 rounded-full border-2 flex items-center justify-center bg-slate-900
+                        ${step.active ? 'border-emerald-500' : 'border-slate-700'}
+                      `}>
+                        {step.active && <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
+                      </div>
+                      <div className="flex flex-col">
+                        <span className={`text-sm ${step.active ? 'text-white font-medium' : 'text-slate-500'}`}>{step.label}</span>
+                        {step.ts && <span className="text-xs text-slate-400 mt-0.5">{formatDate(step.ts)}</span>}
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {operation.status === 'CANCELLED' && (
+                    <div className="relative pl-6 mt-4">
+                      <div className="absolute -left-[9px] top-1 w-4 h-4 rounded-full border-2 border-rose-500 bg-slate-900 flex items-center justify-center">
+                        <div className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-sm text-white font-medium">Cancelled</span>
+                        <span className="text-xs text-slate-400 mt-0.5">{formatDate(operation.cancelled_at)}</span>
+                        <span className="text-xs text-rose-400 mt-1">Reason: {operation.cancellation_reason}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-            </CardHeader>
+            </div>
+          </Card>
+
+          <Card>
+            <CardHeader title="Operation Timeline" />
             <div className="p-1">
               <div className="relative border-l-2 border-slate-800 ml-3 space-y-6">
                 {events.length === 0 ? (
@@ -270,47 +428,71 @@ export default function OperationDetailPage() {
             </div>
           </Card>
         </div>
+        </div>
+        )}
+
+        {activeTab === 'DOCUMENTS' && (
+          <OperationDocumentsTab operationId={id} operationStatus={operation.status} />
+        )}
       </div>
 
-      {/* Status Update Modal */}
-      {showStatusModal && (
+      {/* Confirm Action Modal */}
+      {showConfirmModal && nextAction && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md shadow-2xl">
             <div className="p-5 border-b border-slate-800">
-              <h3 className="text-lg font-bold text-white">Update Status Operation</h3>
+              <h3 className="text-lg font-bold text-white">Konfirmasi Tindakan</h3>
+            </div>
+            <div className="p-5">
+              <p className="text-slate-300">Anda yakin ingin melanjutkan tindakan: <strong>{nextAction.label}</strong>?</p>
+            </div>
+            <div className="p-5 border-t border-slate-800 flex justify-end gap-3 bg-slate-800/20">
+              <Button variant="secondary" onClick={() => setShowConfirmModal(false)}>Batal</Button>
+              <Button onClick={() => handleUpdateStatus(nextAction.next)} isLoading={isUpdatingStatus}>Konfirmasi</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Operation Modal */}
+      {showCancelModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md shadow-2xl">
+            <div className="p-5 border-b border-slate-800">
+              <h3 className="text-lg font-bold text-rose-500">Cancel Operation</h3>
             </div>
             <div className="p-5 space-y-4">
+              <p className="text-sm text-slate-300">
+                Peringatan: Membatalkan operasi akan menghentikan seluruh aktivitas terkait dan otomatis merilis (release) semua resource (Driver & Vehicle) yang ditugaskan.
+              </p>
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-slate-300">Status Baru</label>
-                <select 
-                  className="bg-slate-950 border border-slate-700 text-slate-100 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500"
-                  value={newStatus}
-                  onChange={(e) => setNewStatus(e.target.value)}
-                >
-                  <option value="PLANNING">Planning</option>
-                  <option value="READY">Ready</option>
-                  <option value="IN_PROGRESS">In Progress</option>
-                  <option value="COMPLETED">Completed</option>
-                  <option value="CANCELLED">Cancelled</option>
-                </select>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-slate-300">Catatan Status (Opsional)</label>
+                <label className="text-xs font-medium text-slate-300">Alasan Pembatalan <span className="text-rose-500">*</span></label>
                 <textarea 
                   className="bg-slate-950 border border-slate-700 text-slate-100 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500"
                   rows="3"
-                  value={statusNotes}
-                  onChange={(e) => setStatusNotes(e.target.value)}
-                  placeholder="Berikan alasan atau keterangan..."
+                  value={cancellationReason}
+                  onChange={(e) => setCancellationReason(e.target.value)}
+                  placeholder="Wajib diisi..."
                 />
               </div>
             </div>
             <div className="p-5 border-t border-slate-800 flex justify-end gap-3 bg-slate-800/20">
-              <Button variant="secondary" onClick={() => setShowStatusModal(false)}>Batal</Button>
-              <Button onClick={handleUpdateStatus} isLoading={isUpdatingStatus}>Simpan Status</Button>
+              <Button variant="secondary" onClick={() => setShowCancelModal(false)}>Kembali</Button>
+              <Button variant="danger" onClick={() => handleUpdateStatus('CANCELLED', '', cancellationReason)} isLoading={isUpdatingStatus}>Batalkan Operation</Button>
             </div>
           </div>
         </div>
+      )}
+
+      {showAssignModal && (
+        <AssignResourceModal 
+          operation={operation} 
+          onClose={() => setShowAssignModal(false)}
+          onAssigned={() => {
+            setShowAssignModal(false);
+            fetchData();
+          }}
+        />
       )}
     </div>
   );

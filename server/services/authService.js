@@ -32,6 +32,7 @@ class AuthService {
     }
 
     // 3. Verify password
+    console.log("Login attempt:", {email: user.email, reqPass: password, dbHash: user.password_hash});
     const isPasswordValid = await comparePassword(password, user.password_hash);
     if (!isPasswordValid) {
       const error = new Error('Email atau password tidak valid');

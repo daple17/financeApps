@@ -17,6 +17,7 @@ const jobOrderRoutes = require('./routes/jobOrderRoutes');
 const businessPartnerRoutes = require('./routes/masterData/businessPartnerRoutes');
 const locationRoutes = require('./routes/masterData/locationRoutes');
 const logisticsRoutes = require('./routes/masterData/logisticsRoutes');
+const resourceRoutes = require('./routes/masterData/resourceRoutes');
 const operationRoutes = require('./routes/operationRoutes');
 
 const app = express();
@@ -45,6 +46,7 @@ app.use('/api/v1/job-orders', jobOrderRoutes);
 app.use('/api/v1/master-data/business-partners', businessPartnerRoutes);
 app.use('/api/v1/master-data/locations', locationRoutes);
 app.use('/api/v1/master-data/logistics', logisticsRoutes);
+app.use('/api/v1/master-data/resources', resourceRoutes);
 app.use('/api/v1/operations', operationRoutes);
 
 // Health check endpoint
@@ -56,6 +58,9 @@ app.get('/api/v1/health', (req, res) => {
     version: '1.0.0'
   });
 });
+
+// Serve static uploaded files
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Serve static frontend files in production
 app.use(express.static(path.join(__dirname, '../client/dist')));

@@ -26,13 +26,62 @@ const operationService = {
     return response.data;
   },
 
-  updateStatus: async (id, status, notes) => {
-    const response = await api.put(`/operations/${id}/status`, { status, notes });
+  updateStatus: async (id, status, notes, cancellation_reason) => {
+    const response = await api.put(`/operations/${id}/status`, { status, notes, cancellation_reason });
     return response.data;
   },
 
   getEvents: async (id) => {
     const response = await api.get(`/operations/${id}/events`);
+    return response.data;
+  },
+
+  getAssignment: async (id) => {
+    const response = await api.get(`/operations/${id}/assignment`);
+    return response.data;
+  },
+
+  assignResource: async (id, data) => {
+    const response = await api.post(`/operations/${id}/assignment`, data);
+    return response.data;
+  },
+
+  releaseResource: async (id) => {
+    const response = await api.delete(`/operations/${id}/assignment`);
+    return response.data;
+  },
+
+  getDocuments: async (id) => {
+    const response = await api.get(`/operations/${id}/documents`);
+    return response.data;
+  },
+
+  uploadDocument: async (id, formData) => {
+    const response = await api.post(`/operations/${id}/documents`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  },
+
+  deleteDocument: async (id, docId) => {
+    const response = await api.delete(`/operations/${id}/documents/${docId}`);
+    return response.data;
+  },
+
+  getPod: async (id) => {
+    const response = await api.get(`/operations/${id}/pod`);
+    return response.data;
+  },
+
+  submitPod: async (id, formData) => {
+    const response = await api.post(`/operations/${id}/pod`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  },
+
+  verifyPod: async (id, podId, action, reason) => {
+    const response = await api.put(`/operations/${id}/pod/verify`, { podId, action, reason });
     return response.data;
   }
 };
