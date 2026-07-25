@@ -404,7 +404,7 @@ export default function JobOrderForm({ initialData = null, isEdit = false }) {
       setFormData(prev => ({
         ...prev,
         pickup_reference_id: value,
-        pickup_location: selected ? selected.name : '',
+        pickup_location: selected ? (isPort ? selected.port_name : selected.warehouse_name) : '',
         pickup_address: selected ? selected.address : ''
       }));
     } else if (name === 'delivery_reference_id') {
@@ -415,7 +415,7 @@ export default function JobOrderForm({ initialData = null, isEdit = false }) {
       setFormData(prev => ({
         ...prev,
         delivery_reference_id: value,
-        delivery_location: selected ? selected.name : '',
+        delivery_location: selected ? (isPort ? selected.port_name : selected.warehouse_name) : '',
         delivery_address: selected ? selected.address : ''
       }));
     } else {
