@@ -1,6 +1,18 @@
 const JobOrderModel = require('../models/jobOrderModel');
 const { JOB_ORDER_TYPES, JOB_ORDER_STATUSES, STATUS_TRANSITIONS } = require('../utils/constants');
 
+const fieldLabels = {
+  job_order_type: 'Tipe Job Order',
+  customer_name: 'Nama Customer',
+  service_type: 'Jenis Layanan',
+  pickup_location: 'Nama Lokasi Pickup',
+  pickup_address: 'Alamat Pickup',
+  pickup_date: 'Jadwal Pickup',
+  delivery_location: 'Nama Lokasi Tujuan',
+  delivery_address: 'Alamat Tujuan',
+  delivery_target_date: 'Target Delivery'
+};
+
 /**
  * Create a new Job Order
  */
@@ -31,9 +43,10 @@ exports.createJobOrder = async (req, res, next) => {
       
       const missing = requiredFields.filter(field => !jobData[field]);
       if (missing.length > 0) {
+        const missingLabels = missing.map(f => fieldLabels[f] || f);
         return res.status(400).json({ 
           status: 'error', 
-          message: `Field berikut wajib diisi untuk status CONFIRMED: ${missing.join(', ')}`
+          message: `Field berikut wajib diisi untuk status CONFIRMED: ${missingLabels.join(', ')}`
         });
       }
     }
@@ -165,9 +178,10 @@ exports.updateJobOrder = async (req, res, next) => {
       
       const missing = requiredFields.filter(field => !jobData[field] && !existingJob[field]);
       if (missing.length > 0) {
+        const missingLabels = missing.map(f => fieldLabels[f] || f);
         return res.status(400).json({ 
           status: 'error', 
-          message: `Field berikut wajib diisi untuk status CONFIRMED: ${missing.join(', ')}`
+          message: `Field berikut wajib diisi untuk status CONFIRMED: ${missingLabels.join(', ')}`
         });
       }
     }
