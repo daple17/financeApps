@@ -134,9 +134,9 @@ const operationCostController = {
       const { status } = req.body;
       const userId = req.user.id;
 
-      const validStatuses = ['DRAFT', 'SUBMITTED', 'APPROVED', 'POSTED'];
+      const validStatuses = ['DRAFT', 'SUBMITTED', 'APPROVED'];
       if (!validStatuses.includes(status)) {
-        return res.status(400).json({ status: 'error', message: 'Status tidak valid' });
+        return res.status(400).json({ status: 'error', message: 'Status tidak valid atau tidak diizinkan pada fase ini' });
       }
 
       const existingCost = await OperationCostModel.findById(id);
@@ -146,6 +146,19 @@ const operationCostController = {
 
       if (existingCost.status === 'POSTED') {
         return res.status(400).json({ status: 'error', message: 'Cost yang sudah POSTED tidak dapat diubah statusnya' });
+      }
+
+      // Validasi transisi status
+      const currentStatus = existingCost.status;
+      let validTransition = false;
+      if (currentStatus === 'DRAFT' && status === 'SUBMITTED') validTransition = true;
+      else if (currentStatus === 'SUBMITTED' && status === 'APPROVED') validTransition = true;
+
+      if (!validTransition) {
+        return res.status(400).json({ 
+          status: 'error', 
+          message: `Transisi status tidak valid. Tidak bisa mengubah status dari ${currentStatus} ke ${status}`
+        });
       }
 
       // TODO in phase 3.5.x: when status === 'POSTED', create transaction and journal entry.
