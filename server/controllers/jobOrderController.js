@@ -1,4 +1,5 @@
 const JobOrderModel = require('../models/jobOrderModel');
+const OperationCostModel = require('../models/operationCostModel');
 const { JOB_ORDER_TYPES, JOB_ORDER_STATUSES, STATUS_TRANSITIONS } = require('../utils/constants');
 
 const fieldLabels = {
@@ -202,6 +203,34 @@ exports.updateJobOrder = async (req, res, next) => {
     });
   } catch (error) {
     console.error('[JobOrder Controller - Update]:', error);
+    next(error);
+  }
+};
+
+exports.getCostSummary = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const existingJob = await JobOrderModel.findById(id);
+    if (!existingJob) {
+      return res.status(404).json({ status: 'error', message: 'Job Order tidak ditemukan' });
+    }
+
+    const summary = await OperationCostModel.getJobOrderCostSummary(id);
+    let totalCost = 0;
+    summary.forEach(item => {
+      totalCost += parseFloat(item.total_amount || 0);
+    });
+
+    res.json({
+      status: 'success',
+      data: {
+        job_order_id: id,
+        total_actual_cost: totalCost,
+        breakdown: summary
+      }
+    });
+  } catch (error) {
+    console.error('[JobOrder Controller - getCostSummary]:', error);
     next(error);
   }
 };

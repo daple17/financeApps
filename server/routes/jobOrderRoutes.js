@@ -22,7 +22,10 @@ router.get('/:id', requirePermission(['job_orders.read']), jobOrderController.ge
 router.put('/:id', requirePermission(['job_orders.update']), jobOrderController.updateJobOrder);
 
 // Operations for a Job Order
-router.get('/:id/operations', requirePermission('job_orders.read'), operationController.getOperationsByJobOrder);
+router.get('/:id/operations', requirePermission(['job_orders.read']), operationController.getOperationsByJobOrder);
+
+// Cost Summary for a Job Order
+router.get('/:id/cost-summary', requirePermission(['job_orders.read']), jobOrderController.getCostSummary);
 
 // Allocation balance for a Job Order
 router.get('/:id/allocation-balance', requirePermission('job_orders.read'), operationController.getAllocationBalance);

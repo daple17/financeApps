@@ -634,3 +634,6 @@ JOIN container_types ct ON tc.container_type = ct.name OR tc.container_type = ct
 )
 SET tc.container_type_id = ct.id
 WHERE tc.container_type IS NOT NULL AND tc.container_type_id IS NULL;
+
+-- Phase 3.5: Operation Costs
+SOURCE migrations/019_phase3_5_operation_costs.sql;
