@@ -39,6 +39,16 @@ app.use((req, res, next) => {
   next();
 });
 
+// Health check endpoint (Must be before any protected routes)
+app.get('/api/v1/health', (req, res) => {
+  res.status(200).json({
+    status: 'success',
+    message: 'Financial Management API Service is healthy and running',
+    timestamp: new Date().toISOString(),
+    version: '1.0.0'
+  });
+});
+
 // Base API Routes
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/coa', coaRoutes);
@@ -55,16 +65,6 @@ app.use('/api/v1/master-data/logistics', logisticsRoutes);
 app.use('/api/v1/master-data/resources', resourceRoutes);
 app.use('/api/v1/operations', operationRoutes);
 app.use('/api/v1', operationCostRoutes);
-
-// Health check endpoint
-app.get('/api/v1/health', (req, res) => {
-  res.status(200).json({
-    status: 'success',
-    message: 'Financial Management API Service is healthy and running',
-    timestamp: new Date().toISOString(),
-    version: '1.0.0'
-  });
-});
 
 // Serve static uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
