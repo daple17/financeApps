@@ -580,9 +580,11 @@ export default function JobOrderForm({ initialData = null, isEdit = false }) {
                     {formData.pickup_reference_id && !(formData.pickup_location_type === 'PORT' ? ports : warehouses).some(l => l.id === Number(formData.pickup_reference_id)) && (
                       <option value={formData.pickup_reference_id}>{formData.pickup_location} (Inactive)</option>
                     )}
-                    {(formData.pickup_location_type === 'PORT' ? ports : warehouses).map(l => (
-                      <option key={l.id} value={l.id}>{l.code} - {l.name}</option>
-                    ))}
+                    {(formData.pickup_location_type === 'PORT' ? ports : warehouses).map(l => {
+                      const code = formData.pickup_location_type === 'PORT' ? l.port_code : l.warehouse_code;
+                      const name = formData.pickup_location_type === 'PORT' ? l.port_name : l.warehouse_name;
+                      return <option key={l.id} value={l.id}>{code} - {name}</option>;
+                    })}
                   </select>
                 </div>
               )}
@@ -620,9 +622,11 @@ export default function JobOrderForm({ initialData = null, isEdit = false }) {
                     {formData.delivery_reference_id && !(formData.delivery_location_type === 'PORT' ? ports : warehouses).some(l => l.id === Number(formData.delivery_reference_id)) && (
                       <option value={formData.delivery_reference_id}>{formData.delivery_location} (Inactive)</option>
                     )}
-                    {(formData.delivery_location_type === 'PORT' ? ports : warehouses).map(l => (
-                      <option key={l.id} value={l.id}>{l.code} - {l.name}</option>
-                    ))}
+                    {(formData.delivery_location_type === 'PORT' ? ports : warehouses).map(l => {
+                      const code = formData.delivery_location_type === 'PORT' ? l.port_code : l.warehouse_code;
+                      const name = formData.delivery_location_type === 'PORT' ? l.port_name : l.warehouse_name;
+                      return <option key={l.id} value={l.id}>{code} - {name}</option>;
+                    })}
                   </select>
                 </div>
               )}
