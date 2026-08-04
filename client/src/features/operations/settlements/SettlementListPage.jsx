@@ -160,7 +160,7 @@ export default function SettlementListPage() {
                 placeholder="Cari No Settlement / Advance..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                icon={<Search className="w-4 h-4" />}
+                icon={Search}
               />
             </div>
             <select
