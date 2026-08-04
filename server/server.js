@@ -44,7 +44,13 @@ async function autoMigrate() {
       '017_phase3_3_operation_execution.sql',
       '018_phase3_4_pod_documents.sql',
       '019_phase3_5_operation_costs.sql',
-      '021_cash_advances.sql'
+      '020_operation_cost_rejection.sql',
+      '021_cash_advances.sql',
+      '022_cash_advance_rejection.sql',
+      '023_cost_type_account_mappings.sql',
+      '024_settlements_and_items.sql',
+      '025_settlement_items_account.sql',
+      '026_transaction_source_metadata.sql'
     ];
     
     for (let file of files) {
