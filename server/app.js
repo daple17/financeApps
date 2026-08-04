@@ -76,7 +76,9 @@ app.use('/api/v1/settlements', settlementRoutes);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Serve static frontend files in production
-// Removed: Frontend is served by a separate Nginx container in Docker.
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../client/dist')));
+}
 
 // Global 404 Handler for API routes
 app.use('/api', (req, res, next) => {
@@ -87,7 +89,11 @@ app.use('/api', (req, res, next) => {
 });
 
 // Catch-all to serve React SPA for non-API routes
-// Removed: Frontend is served by a separate Nginx container in Docker.
+if (process.env.NODE_ENV === 'production') {
+  app.get('*', (req, res) => {
+    res.sendFile(path.resolve(__dirname, '../client/dist', 'index.html'));
+  });
+}
 
 // Global Error Handler
 app.use((err, req, res, next) => {
