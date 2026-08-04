@@ -222,8 +222,15 @@ class JobOrderModel {
     }
 
     if (status) {
-      query += ` AND j.job_status = ?`;
-      params.push(status);
+      if (status.includes(',')) {
+        const statuses = status.split(',').map(s => s.trim());
+        const placeholders = statuses.map(() => '?').join(',');
+        query += ` AND j.job_status IN (${placeholders})`;
+        params.push(...statuses);
+      } else {
+        query += ` AND j.job_status = ?`;
+        params.push(status);
+      }
     }
 
     // Add type filter

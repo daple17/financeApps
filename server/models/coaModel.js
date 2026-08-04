@@ -7,7 +7,8 @@ class CoaModel {
   static async getAll() {
     const query = `
       SELECT 
-        a.id, a.code, a.name, a.type, a.category, a.parent_id, a.is_active, a.created_at,
+        a.id, a.code, a.name, a.type, a.category, a.parent_id, a.is_active, 
+        a.account_subtype, a.allow_posting, a.created_at,
         p.name AS parent_name
       FROM accounts a
       LEFT JOIN accounts p ON a.parent_id = p.id
@@ -39,6 +40,23 @@ class CoaModel {
   static async findByCode(code) {
     const [rows] = await db.query('SELECT * FROM accounts WHERE code = ?', [code]);
     return rows[0] || null;
+  }
+
+  /**
+   * Find eligible Cash/Bank accounts for Disbursement
+   * Restricts to account_subtype = 'CASH_BANK' and allow_posting = 1
+   */
+  static async findEligibleCashBankAccounts() {
+    const query = `
+      SELECT id, code, name, type 
+      FROM accounts 
+      WHERE account_subtype = 'CASH_BANK'
+        AND allow_posting = 1
+        AND is_active = 1
+      ORDER BY code ASC
+    `;
+    const [rows] = await db.query(query);
+    return rows;
   }
 
   /**

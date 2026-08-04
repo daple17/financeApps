@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CheckSquare, CheckCircle2, XCircle, RefreshCw, Wallet, FileText } from 'lucide-react';
+import { CheckSquare, CheckCircle2, XCircle, RefreshCw, Wallet, FileText, Receipt } from 'lucide-react';
 import api from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
@@ -8,6 +8,7 @@ import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
 import Modal from '../../components/ui/Modal';
 import Input from '../../components/ui/Input';
+import SettlementApprovalModal from './components/SettlementApprovalModal';
 
 export default function ApprovalPage() {
   const [activeTab, setActiveTab] = useState('TRANSACTION');
@@ -15,6 +16,7 @@ export default function ApprovalPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState(null);
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const [isSettlementModalOpen, setIsSettlementModalOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -27,7 +29,11 @@ export default function ApprovalPage() {
     try {
       const endpoint = activeTab === 'OPERATION_COST' 
         ? '/approvals/pending?type=OPERATION_COST' 
-        : '/approvals/pending';
+        : activeTab === 'CASH_ADVANCE'
+          ? '/approvals/pending?type=CASH_ADVANCE'
+          : activeTab === 'SETTLEMENT'
+            ? '/approvals/pending?type=SETTLEMENT'
+            : '/approvals/pending';
       const res = await api.get(endpoint);
       if (res.data.status === 'success') {
         setPendingApprovals(res.data.data || []);
@@ -48,13 +54,22 @@ export default function ApprovalPage() {
     try {
       const endpoint = activeTab === 'OPERATION_COST' 
         ? `/approvals/${id}/approve?type=OPERATION_COST` 
-        : `/approvals/${id}/approve`;
+        : activeTab === 'CASH_ADVANCE'
+          ? `/approvals/${id}/approve?type=CASH_ADVANCE`
+          : activeTab === 'SETTLEMENT'
+            ? `/approvals/${id}/approve?type=SETTLEMENT`
+            : `/approvals/${id}/approve`;
       await api.post(endpoint);
       showSuccess('Pengajuan berhasil disetujui');
       fetchPendingApprovals();
     } catch (err) {
       showError(err.response?.data?.message || 'Gagal menyetujui pengajuan');
     }
+  };
+
+  const handleOpenSettlementModal = (item) => {
+    setSelectedItem(item);
+    setIsSettlementModalOpen(true);
   };
 
   const handleOpenRejectModal = (item) => {
@@ -73,7 +88,11 @@ export default function ApprovalPage() {
     try {
       const endpoint = activeTab === 'OPERATION_COST' 
         ? `/approvals/${selectedItem.id}/reject?type=OPERATION_COST` 
-        : `/approvals/${selectedItem.id}/reject`;
+        : activeTab === 'CASH_ADVANCE'
+          ? `/approvals/${selectedItem.id}/reject?type=CASH_ADVANCE`
+          : activeTab === 'SETTLEMENT'
+            ? `/approvals/${selectedItem.id}/reject?type=SETTLEMENT`
+            : `/approvals/${selectedItem.id}/reject`;
       await api.post(endpoint, { rejectionReason });
       showSuccess('Pengajuan telah ditolak');
       setIsRejectModalOpen(false);
@@ -125,12 +144,40 @@ export default function ApprovalPage() {
         >
           <FileText className="w-4 h-4" /> Operation Costs
         </button>
+        <button
+          onClick={() => setActiveTab('CASH_ADVANCE')}
+          className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'CASH_ADVANCE'
+              ? 'border-sky-500 text-sky-400'
+              : 'border-transparent text-slate-400 hover:text-slate-300 hover:border-slate-600'
+          }`}
+        >
+          <Wallet className="w-4 h-4" /> Cash Advances
+        </button>
+        <button
+          onClick={() => setActiveTab('SETTLEMENT')}
+          className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'SETTLEMENT'
+              ? 'border-sky-500 text-sky-400'
+              : 'border-transparent text-slate-400 hover:text-slate-300 hover:border-slate-600'
+          }`}
+        >
+          <Receipt className="w-4 h-4" /> Settlements
+        </button>
       </div>
 
       {/* Main Pending Table */}
       <Card>
         <CardHeader
-          title={activeTab === 'TRANSACTION' ? "Pengajuan Transaksi (Pending Approval)" : "Pengajuan Operation Cost (Submitted)"}
+          title={
+            activeTab === 'TRANSACTION' 
+              ? "Pengajuan Transaksi (Pending Approval)" 
+              : activeTab === 'OPERATION_COST' 
+                ? "Pengajuan Operation Cost (Submitted)" 
+                : activeTab === 'CASH_ADVANCE'
+                  ? "Pengajuan Cash Advance (Submitted)"
+                  : "Pengajuan Settlement (Submitted)"
+          }
           subtitle={`Terdapat ${pendingApprovals.length} item menunggu persetujuan`}
         />
 
@@ -153,12 +200,20 @@ export default function ApprovalPage() {
                       <th className="py-3 px-4">Keterangan</th>
                       <th className="py-3 px-4 text-right">Nominal</th>
                     </>
-                  ) : (
+                  ) : activeTab === 'OPERATION_COST' ? (
                     <>
                       <th className="py-3 px-4">Job Order / Operation</th>
                       <th className="py-3 px-4">Cost Type</th>
                       <th className="py-3 px-4">Description</th>
                       <th className="py-3 px-4">Submitted By</th>
+                      <th className="py-3 px-4 text-right">Amount</th>
+                    </>
+                  ) : (
+                    <>
+                      <th className="py-3 px-4">No. Advance</th>
+                      <th className="py-3 px-4">Scope</th>
+                      <th className="py-3 px-4">Recipient</th>
+                      <th className="py-3 px-4">Purpose</th>
                       <th className="py-3 px-4 text-right">Amount</th>
                     </>
                   )}
@@ -178,7 +233,7 @@ export default function ApprovalPage() {
                           Rp {Number(item.amount).toLocaleString('id-ID')}
                         </td>
                       </>
-                    ) : (
+                    ) : activeTab === 'OPERATION_COST' ? (
                       <>
                         <td className="py-3 px-4">
                           <div className="font-mono text-xs text-sky-400">{item.job_order_number}</div>
@@ -197,28 +252,58 @@ export default function ApprovalPage() {
                           Rp {Number(item.amount).toLocaleString('id-ID')}
                         </td>
                       </>
+                    ) : (
+                      <>
+                        <td className="py-3 px-4 font-mono font-bold text-amber-400">
+                          {item.advance_no}
+                          <div className="text-xs font-normal text-slate-500">{new Date(item.request_date).toLocaleDateString('id-ID')}</div>
+                        </td>
+                        <td className="py-3 px-4 text-slate-300">
+                          <Badge variant={item.advance_scope === 'GENERAL' ? 'secondary' : 'info'}>
+                            {item.advance_scope}
+                          </Badge>
+                        </td>
+                        <td className="py-3 px-4 text-white font-medium">
+                          {item.driver_name || item.user_name}
+                        </td>
+                        <td className="py-3 px-4 text-slate-300 max-w-xs truncate">{item.purpose}</td>
+                        <td className="py-3 px-4 text-right font-mono font-bold text-white text-base">
+                          Rp {Number(item.amount).toLocaleString('id-ID')}
+                        </td>
+                      </>
                     )}
                     
                     <td className="py-3 px-4 text-right space-x-2">
                       {hasPermission('approvals.manage') ? (
-                        <>
+                        activeTab === 'SETTLEMENT' ? (
                           <Button
-                            variant="primary"
+                            variant="outline"
                             size="sm"
-                            onClick={() => handleApprove(item.id)}
-                            className="bg-emerald-600 hover:bg-emerald-500 text-xs"
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5" /> Setujui
-                          </Button>
-                          <Button
-                            variant="danger"
-                            size="sm"
-                            onClick={() => handleOpenRejectModal(item)}
+                            onClick={() => handleOpenSettlementModal(item)}
                             className="text-xs"
                           >
-                            <XCircle className="w-3.5 h-3.5" /> Tolak
+                            <FileText className="w-3.5 h-3.5 mr-1" /> View Detail
                           </Button>
-                        </>
+                        ) : (
+                          <>
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={() => handleApprove(item.id)}
+                              className="bg-emerald-600 hover:bg-emerald-500 text-xs"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" /> Setujui
+                            </Button>
+                            <Button
+                              variant="danger"
+                              size="sm"
+                              onClick={() => handleOpenRejectModal(item)}
+                              className="text-xs"
+                            >
+                              <XCircle className="w-3.5 h-3.5" /> Tolak
+                            </Button>
+                          </>
+                        )
                       ) : (
                         <Badge variant="warning">Akses View Only</Badge>
                       )}
@@ -241,8 +326,10 @@ export default function ApprovalPage() {
           <p className="text-xs text-slate-300">
             {activeTab === 'TRANSACTION' ? (
               <>Transaksi <strong className="text-amber-400">#{selectedItem?.transaction_number}</strong></>
-            ) : (
+            ) : activeTab === 'OPERATION_COST' ? (
               <>Biaya Operasional <strong className="text-amber-400">#{selectedItem?.operation_no} - {selectedItem?.cost_type}</strong></>
+            ) : (
+              <>Cash Advance <strong className="text-amber-400">#{selectedItem?.advance_no}</strong></>
             )}
             {' '}dengan nominal <strong className="text-white">Rp {Number(selectedItem?.amount || 0).toLocaleString()}</strong> akan ditolak.
           </p>
@@ -265,6 +352,15 @@ export default function ApprovalPage() {
           </div>
         </form>
       </Modal>
+
+      {/* Settlement Detail Modal for Approval */}
+      <SettlementApprovalModal
+        isOpen={isSettlementModalOpen}
+        onClose={() => setIsSettlementModalOpen(false)}
+        settlementId={selectedItem?.id}
+        onApprove={(id) => handleApprove(id)}
+        onReject={(data) => handleOpenRejectModal(data)}
+      />
     </div>
   );
 }

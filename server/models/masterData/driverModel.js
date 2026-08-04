@@ -11,8 +11,15 @@ class DriverModel {
     }
 
     if (filters.status) {
-      query += ' AND status = ?';
-      params.push(filters.status);
+      if (filters.status.includes(',')) {
+        const statuses = filters.status.split(',').map(s => s.trim());
+        const placeholders = statuses.map(() => '?').join(',');
+        query += ` AND status IN (${placeholders})`;
+        params.push(...statuses);
+      } else {
+        query += ' AND status = ?';
+        params.push(filters.status);
+      }
     }
     
     if (filters.availability) {

@@ -7,7 +7,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { Card, CardHeader } from '../../../components/ui/Card';
 import Button from '../../../components/ui/Button';
 import Badge from '../../../components/ui/Badge';
-import { Plus, Truck } from 'lucide-react';
+import { Plus, Truck, Wallet } from 'lucide-react';
 import JobOrderDocumentsTab from './documents/JobOrderDocumentsTab';
 import JobOrderCostTab from './costs/JobOrderCostTab';
 
@@ -91,12 +91,20 @@ export default function JobOrderDetailPage() {
           </div>
         </div>
 
-        {hasPermission('job_orders.update') && (
-          <Button variant="outline" onClick={() => navigate(`/job-orders/${jobOrder.id}/edit`)}>
-            <Edit2 className="w-4 h-4" />
-            Edit Job Order
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {hasPermission('cash_advance.create') && (
+            <Button variant="outline" onClick={() => navigate(`/cash-advances/new?job_order_id=${id}`)}>
+              <Wallet className="w-4 h-4 mr-2" />
+              Cash Advance
+            </Button>
+          )}
+          {hasPermission('job_orders.update') && (
+            <Button variant="outline" onClick={() => navigate(`/job-orders/${jobOrder.id}/edit`)}>
+              <Edit2 className="w-4 h-4 mr-2" />
+              Edit Job Order
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="border-b border-slate-800">

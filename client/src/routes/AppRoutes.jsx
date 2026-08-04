@@ -40,6 +40,12 @@ import DriverList from '../features/master-data/resources/DriverList';
 import DriverForm from '../features/master-data/resources/DriverForm';
 import VehicleList from '../features/master-data/resources/VehicleList';
 import VehicleForm from '../features/master-data/resources/VehicleForm';
+import CashAdvanceListPage from '../features/operations/cash-advances/CashAdvanceListPage';
+import CashAdvanceFormPage from '../features/operations/cash-advances/CashAdvanceFormPage';
+import CashAdvanceDetailPage from '../features/operations/cash-advances/CashAdvanceDetailPage';
+import SettlementListPage from '../features/operations/settlements/SettlementListPage';
+import SettlementFormPage from '../features/operations/settlements/SettlementFormPage';
+import SettlementDetailPage from '../features/operations/settlements/SettlementDetailPage';
 import { Briefcase, Users, UserCheck } from 'lucide-react';
 
 export default function AppRoutes() {
@@ -108,6 +114,26 @@ export default function AppRoutes() {
             
             <Route element={<ProtectedRoute requiredPermission="operations.edit" />}>
               <Route path="/operations/:id/edit" element={<OperationForm />} />
+            </Route>
+
+            {/* CASH ADVANCE */}
+            <Route element={<ProtectedRoute requiredPermission="cash_advance.view" />}>
+              <Route path="/cash-advances" element={<CashAdvanceListPage />} />
+              <Route path="/cash-advances/new" element={<CashAdvanceFormPage />} />
+              <Route path="/cash-advances/:id" element={<CashAdvanceDetailPage />} />
+            </Route>
+
+            <Route element={<ProtectedRoute requiredPermission="settlement.view" />}>
+              <Route path="/settlements" element={<SettlementListPage />} />
+              <Route path="/settlements/new" element={<SettlementFormPage />} />
+              <Route path="/settlements/:id" element={<SettlementDetailPage />} />
+            </Route>
+
+            <Route element={<ProtectedRoute requiredPermission="cash_advance.create" />}>
+              <Route path="/cash-advances/new" element={<CashAdvanceFormPage />} />
+            </Route>
+            <Route element={<ProtectedRoute requiredPermission="cash_advance.edit" />}>
+              <Route path="/cash-advances/:id/edit" element={<CashAdvanceFormPage />} />
             </Route>
 
             {/* Master Data Routes */}

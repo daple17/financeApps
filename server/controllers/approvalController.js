@@ -28,6 +28,9 @@ class ApprovalController {
         data: entity
       });
     } catch (error) {
+      if (error.message.includes('Hanya') || error.message.includes('tidak lagi') || error.message.includes('Status saat ini') || error.message.includes('sudah')) {
+        return res.status(409).json({ status: 'error', message: error.message });
+      }
       next(error);
     }
   }
@@ -43,6 +46,9 @@ class ApprovalController {
         data: entity
       });
     } catch (error) {
+      if (error.message.includes('Hanya') || error.message.includes('tidak lagi') || error.message.includes('Status saat ini') || error.message.includes('sudah')) {
+        return res.status(409).json({ status: 'error', message: error.message });
+      }
       next(error);
     }
   }

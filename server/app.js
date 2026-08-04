@@ -20,6 +20,9 @@ const logisticsRoutes = require('./routes/masterData/logisticsRoutes');
 const resourceRoutes = require('./routes/masterData/resourceRoutes');
 const operationRoutes = require('./routes/operationRoutes');
 const operationCostRoutes = require('./routes/operationCostRoutes');
+const cashAdvanceRoutes = require('./routes/cashAdvanceRoutes');
+const costTypeMappingRoutes = require('./routes/costTypeMappingRoutes');
+const settlementRoutes = require('./routes/settlementRoutes');
 
 const app = express();
 
@@ -65,12 +68,15 @@ app.use('/api/v1/master-data/logistics', logisticsRoutes);
 app.use('/api/v1/master-data/resources', resourceRoutes);
 app.use('/api/v1/operations', operationRoutes);
 app.use('/api/v1', operationCostRoutes);
+app.use('/api/v1/cash-advances', cashAdvanceRoutes);
+app.use('/api/v1/cost-type-mappings', costTypeMappingRoutes);
+app.use('/api/v1/settlements', settlementRoutes);
 
 // Serve static uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Serve static frontend files in production
-app.use(express.static(path.join(__dirname, '../client/dist')));
+// Removed: Frontend is served by a separate Nginx container in Docker.
 
 // Global 404 Handler for API routes
 app.use('/api', (req, res, next) => {
@@ -81,9 +87,7 @@ app.use('/api', (req, res, next) => {
 });
 
 // Catch-all to serve React SPA for non-API routes
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../client/dist/index.html'));
-});
+// Removed: Frontend is served by a separate Nginx container in Docker.
 
 // Global Error Handler
 app.use((err, req, res, next) => {

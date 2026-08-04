@@ -35,6 +35,8 @@ services:
       - JWT_SECRET=this_is_a_very_secret_key_for_jwt_auth_123!
       - JWT_REFRESH_SECRET=this_is_another_very_secret_key_for_refresh_456!
       - PORT=5000
+    volumes:
+      - backend_uploads:/usr/src/app/uploads
     depends_on:
       mysql-db:
         condition: service_healthy
@@ -52,3 +54,4 @@ services:
 
 volumes:
   mysql_data:
+  backend_uploads:

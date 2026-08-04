@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit2, History, Briefcase, MapPin, CheckCircle, AlertCircle, RefreshCw, User, Truck, LogOut } from 'lucide-react';
+import { ArrowLeft, Edit2, History, Briefcase, MapPin, CheckCircle, AlertCircle, RefreshCw, User, Truck, LogOut, Wallet } from 'lucide-react';
 import operationService from '../../../services/operationService';
 import AssignResourceModal from './AssignResourceModal';
 import { useToast } from '../../../context/ToastContext';

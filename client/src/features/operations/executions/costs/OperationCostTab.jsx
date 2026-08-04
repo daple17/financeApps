@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, MoreVertical, Edit2, Trash2, CheckCircle, Send, Wallet, AlertCircle } from 'lucide-react';
+import { Plus, MoreVertical, Edit2, Trash2, CheckCircle, Send, Wallet, AlertCircle, ArrowRight, Receipt } from 'lucide-react';
 import operationCostService from '../../../../services/operationCostService';
+import { getCashAdvances } from '../../../../services/cashAdvanceService';
 import { useAuth } from '../../../../context/AuthContext';
 import { useToast } from '../../../../context/ToastContext';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardHeader } from '../../../../components/ui/Card';
 import Button from '../../../../components/ui/Button';
 import Badge from '../../../../components/ui/Badge';
@@ -11,9 +13,10 @@ import CostFormModal, { COST_TYPES } from './CostFormModal';
 export default function OperationCostTab({ operationId, jobOrderId }) {
   const { hasPermission } = useAuth();
   const { showSuccess, showError } = useToast();
+  const navigate = useNavigate();
   
   const [costs, setCosts] = useState([]);
-  const [summary, setSummary] = useState(null);
+  const [cashAdvances, setCashAdvances] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   
   const [showForm, setShowForm] = useState(false);
@@ -29,20 +32,23 @@ export default function OperationCostTab({ operationId, jobOrderId }) {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [costsRes, summaryRes] = await Promise.all([
-        operationCostService.getByOperationId(operationId),
-        jobOrderId ? operationCostService.getCostSummary(jobOrderId) : Promise.resolve({ data: null })
-      ]);
+      const promises = [operationCostService.getByOperationId(operationId)];
+      if (hasPermission('cash_advance.view')) {
+        promises.push(getCashAdvances({ operation_id: operationId }));
+      } else {
+        promises.push(Promise.resolve(null));
+      }
+
+      const [costsRes, advancesRes] = await Promise.all(promises);
       
       if (costsRes.status === 'success') {
         setCosts(costsRes.data);
       }
-      
-      if (summaryRes.status === 'success' && summaryRes.data) {
-        setSummary(summaryRes.data);
+      if (advancesRes && advancesRes.status === 'success') {
+        setCashAdvances(advancesRes.data);
       }
     } catch (error) {
-      showError('Gagal memuat data biaya operasional');
+      showError('Gagal memuat data keuangan operasional');
     } finally {
       setIsLoading(false);
     }
@@ -89,16 +95,11 @@ export default function OperationCostTab({ operationId, jobOrderId }) {
     setActionMenuOpen(null);
   };
 
-  // Group breakdown from summary if available, else calculate locally for UI fallback
-  const breakdown = summary && summary.breakdown 
-    ? summary.breakdown.reduce((acc, item) => {
-        acc[item.cost_type] = Number(item.total_amount);
-        return acc;
-      }, {})
-    : costs.reduce((acc, curr) => {
-        acc[curr.cost_type] = (acc[curr.cost_type] || 0) + Number(curr.amount);
-        return acc;
-      }, {});
+  // Calculate breakdown ONLY from the current operation's costs to avoid mixing other job order costs.
+  const breakdown = costs.reduce((acc, curr) => {
+    acc[curr.cost_type] = (acc[curr.cost_type] || 0) + Number(curr.amount);
+    return acc;
+  }, {});
 
   // Summary mapping logic based on jobOrder API
   // Note: summary returned by backend groups ALL operations for the JobOrder.
@@ -109,6 +110,17 @@ export default function OperationCostTab({ operationId, jobOrderId }) {
     acc[curr.status] = (acc[curr.status] || 0) + Number(curr.amount);
     return acc;
   }, { total: 0, DRAFT: 0, SUBMITTED: 0, REJECTED: 0, APPROVED: 0, POSTED: 0 });
+
+  // Calculate Cash Advance totals
+  const caTotals = cashAdvances.reduce((acc, curr) => {
+    if (curr.status !== 'REJECTED' && curr.status !== 'CANCELLED') {
+      acc.total += Number(curr.amount);
+    }
+    if (curr.status === 'DISBURSED' || curr.status === 'SETTLED') {
+      acc.disbursed += Number(curr.amount);
+    }
+    return acc;
+  }, { total: 0, disbursed: 0 });
 
   if (isLoading) {
     return <div className="py-12 text-center text-slate-400">Loading cost data...</div>;
@@ -157,10 +169,91 @@ export default function OperationCostTab({ operationId, jobOrderId }) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Cost Table */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-white">Cost Records</h3>
+        <div className="lg:col-span-2 space-y-8">
+          
+          {/* CASH ADVANCE SECTION */}
+          {hasPermission('cash_advance.view') && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-white">Cash Advance</h3>
+                {hasPermission('cash_advance.create') && (
+                  <Button variant="outline" onClick={() => navigate(`/cash-advances/new?operation_id=${operationId}`)}>
+                    <Wallet className="w-4 h-4 mr-2" /> Request Cash Advance
+                  </Button>
+                )}
+              </div>
+
+              {cashAdvances.length > 0 && (
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm">
+                    <p className="text-xs text-slate-400 font-medium mb-1">TOTAL ADVANCE</p>
+                    <p className="text-xl font-bold text-sky-400">{formatCurrency(caTotals.total)}</p>
+                  </div>
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm">
+                    <p className="text-xs text-slate-400 font-medium mb-1">DISBURSED</p>
+                    <p className="text-xl font-bold text-emerald-400">{formatCurrency(caTotals.disbursed)}</p>
+                  </div>
+                </div>
+              )}
+
+              <Card>
+                {cashAdvances.length === 0 ? (
+                  <div className="py-12 text-center text-slate-400 flex flex-col items-center">
+                    <Wallet className="w-10 h-10 mb-3 text-slate-600" />
+                    <h3 className="text-md font-medium text-slate-300">No Cash Advance</h3>
+                    <p className="mt-1 text-sm max-w-md">No cash advance has been requested for this Operation.</p>
+                    {hasPermission('cash_advance.create') && (
+                      <Button variant="outline" className="mt-4" onClick={() => navigate(`/cash-advances/new?operation_id=${operationId}`)}>
+                        <Wallet className="w-4 h-4 mr-2" /> Request Cash Advance
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                      <thead className="text-xs text-slate-400 uppercase bg-slate-900/50 border-b border-slate-800">
+                        <tr>
+                          <th className="px-4 py-3">Advance No</th>
+                          <th className="px-4 py-3">Recipient</th>
+                          <th className="px-4 py-3">Date</th>
+                          <th className="px-4 py-3 text-right">Amount</th>
+                          <th className="px-4 py-3 text-center">Status</th>
+                          <th className="px-4 py-3 text-center">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800">
+                        {cashAdvances.map((ca) => (
+                          <tr key={ca.id} className="hover:bg-slate-800/30">
+                            <td className="px-4 py-3 font-medium text-amber-400">{ca.advance_no}</td>
+                            <td className="px-4 py-3 text-slate-200">{ca.driver_name || ca.user_name}</td>
+                            <td className="px-4 py-3 text-slate-400">
+                              {ca.request_date ? new Date(ca.request_date).toLocaleDateString('id-ID') : '-'}
+                            </td>
+                            <td className="px-4 py-3 font-medium text-sky-400 text-right">
+                              {formatCurrency(ca.amount)}
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              {getStatusBadge(ca.status)}
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <Button variant="secondary" size="sm" onClick={() => navigate(`/cash-advances/${ca.id}`)}>
+                                View <ArrowRight className="w-3 h-3 ml-1" />
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </Card>
+            </div>
+          )}
+
+          {/* COST RECORDS SECTION */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-white">Cost Records</h3>
             {hasPermission('operation_cost.create') && (
               <Button variant="primary" onClick={() => {
                 setEditingCost(null);
@@ -224,7 +317,17 @@ export default function OperationCostTab({ operationId, jobOrderId }) {
                           {formatCurrency(cost.amount)}
                         </td>
                         <td className="px-4 py-3 text-center">
-                          {getStatusBadge(cost.status)}
+                          <div className="flex flex-col items-center gap-1.5">
+                            {getStatusBadge(cost.status)}
+                            {cost.settlement_no && (
+                              <Badge variant="info" className="scale-90">
+                                <span className="flex items-center gap-1 text-[10px]">
+                                  <Receipt className="w-3 h-3" />
+                                  {cost.settlement_no}
+                                </span>
+                              </Badge>
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-center relative">
                           <button 
@@ -301,6 +404,7 @@ export default function OperationCostTab({ operationId, jobOrderId }) {
               </div>
             )}
           </Card>
+          </div>
         </div>
 
         {/* Cost Breakdown */}

@@ -4,10 +4,12 @@ class TransactionModel {
   /**
    * Insert transaction and journal entries atomically
    */
-  static async createWithJournals(transactionData, journalEntries) {
-    const connection = await db.getConnection();
+  static async createWithJournals(transactionData, journalEntries, externalConnection = null) {
+    const connection = externalConnection || await db.getConnection();
     try {
-      await connection.beginTransaction();
+      if (!externalConnection) {
+        await connection.beginTransaction();
+      }
 
       // 1. Insert Transaction
       const trxQuery = `
@@ -43,13 +45,19 @@ class TransactionModel {
 
       await connection.query(journalQuery, [values]);
 
-      await connection.commit();
+      if (!externalConnection) {
+        await connection.commit();
+      }
       return transactionId;
     } catch (error) {
-      await connection.rollback();
+      if (!externalConnection) {
+        await connection.rollback();
+      }
       throw error;
     } finally {
-      connection.release();
+      if (!externalConnection) {
+        connection.release();
+      }
     }
   }
 

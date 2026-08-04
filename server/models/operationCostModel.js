@@ -53,11 +53,14 @@ class OperationCostModel {
       SELECT oc.*, 
              u1.name as created_by_name,
              u2.name as approved_by_name,
-             bp.partner_name as vendor_name
+             bp.partner_name as vendor_name,
+             s.settlement_no
       FROM operation_costs oc
       LEFT JOIN users u1 ON oc.created_by = u1.id
       LEFT JOIN users u2 ON oc.approved_by = u2.id
       LEFT JOIN business_partners bp ON oc.vendor_id = bp.id
+      LEFT JOIN settlement_items si ON oc.id = si.operation_cost_id
+      LEFT JOIN settlements s ON si.settlement_id = s.id
       WHERE oc.operation_id = ?
       ORDER BY oc.transaction_date DESC, oc.created_at DESC
     `;

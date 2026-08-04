@@ -14,7 +14,7 @@ const documentController = {
 
   getJobOrderDocuments: async (req, res) => {
     try {
-      const documents = await DocumentModel.getByJobOrder(req.params.jobOrderId);
+      const documents = await DocumentModel.getByJobOrder(req.params.id);
       res.json({ status: 'success', data: documents });
     } catch (error) {
       res.status(500).json({ status: 'error', message: error.message });

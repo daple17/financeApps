@@ -369,7 +369,29 @@ export default function TransactionPage() {
               <div><span className="text-slate-400">Tipe:</span> <span className="font-semibold text-white">{selectedTrx.type}</span></div>
               <div><span className="text-slate-400">Pembuat:</span> <span className="font-semibold text-white">{selectedTrx.created_by_name}</span></div>
               <div><span className="text-slate-400">Penyetuju:</span> <span className="font-semibold text-white">{selectedTrx.approved_by_name || '-'}</span></div>
-              <div className="col-span-2"><span className="text-slate-400">Deskripsi:</span> <p className="font-medium text-slate-200 mt-1">{selectedTrx.description}</p></div>
+              
+              {selectedTrx.source_type && (
+                <div className="col-span-2">
+                  <span className="text-slate-400">Source Document:</span>{' '}
+                  <span className="font-semibold">
+                    {selectedTrx.source_type === 'SETTLEMENT_POSTING' && (
+                      <a href={`/settlements/${selectedTrx.source_id}`} className="text-sky-400 hover:underline">
+                        Settlement {selectedTrx.source_number || selectedTrx.source_id}
+                      </a>
+                    )}
+                    {selectedTrx.source_type === 'CASH_ADVANCE_DISBURSEMENT' && (
+                      <a href={`/cash-advances/${selectedTrx.source_id}`} className="text-sky-400 hover:underline">
+                        Cash Advance {selectedTrx.source_number || selectedTrx.source_id}
+                      </a>
+                    )}
+                    {selectedTrx.source_type !== 'SETTLEMENT_POSTING' && selectedTrx.source_type !== 'CASH_ADVANCE_DISBURSEMENT' && (
+                      <span className="text-slate-200">{selectedTrx.source_type} {selectedTrx.source_number}</span>
+                    )}
+                  </span>
+                </div>
+              )}
+
+              <div className="col-span-2"><span className="text-slate-400">Deskripsi:</span> <p className="font-medium text-slate-200 mt-1 whitespace-pre-wrap">{selectedTrx.description}</p></div>
             </div>
 
             <div>

@@ -245,7 +245,7 @@ export default function OperationDocumentsTab({ operationId, operationStatus }) 
                         <File className="w-5 h-5 text-sky-400" />
                       </div>
                       <div>
-                        <div className="font-medium text-white text-sm">{doc.original_filename || doc.file_name}</div>
+                        <div className="font-medium text-white text-sm">{doc.file_name}</div>
                         <div className="text-xs text-slate-400 mt-0.5 flex flex-wrap gap-2 items-center">
                           <Badge variant="outline" className="text-[10px]">{doc.document_type}</Badge>
                           {doc.document_number && <span>No: {doc.document_number}</span>}

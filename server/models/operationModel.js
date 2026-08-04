@@ -113,8 +113,15 @@ class OperationModel {
     const params = [];
 
     if (filters.status) {
-      query += ` AND o.status = ?`;
-      params.push(filters.status);
+      if (filters.status.includes(',')) {
+        const statuses = filters.status.split(',').map(s => s.trim());
+        const placeholders = statuses.map(() => '?').join(',');
+        query += ` AND o.status IN (${placeholders})`;
+        params.push(...statuses);
+      } else {
+        query += ` AND o.status = ?`;
+        params.push(filters.status);
+      }
     }
     if (filters.job_order_type) {
       query += ` AND j.job_order_type = ?`;

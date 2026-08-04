@@ -18,7 +18,8 @@ import {
   Anchor,
   Box,
   Package,
-  Settings
+  Settings,
+  Wallet
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -29,6 +30,8 @@ export default function Sidebar({ isOpen, onClose }) {
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, permission: '*' },
     { name: 'Job Order', path: '/job-orders', icon: Truck, permission: 'job_orders.read', section: 'operasional' },
     { name: 'Operations', path: '/operations', icon: Briefcase, permission: 'operations.read', section: 'operasional' },
+    { name: 'Cash Advance', path: '/cash-advances', icon: Wallet, permission: 'cash_advance.view', section: 'operasional' },
+    { name: 'Settlement', path: '/settlements', icon: Receipt, permission: 'settlement.view', section: 'operasional' },
     { name: 'Business Partner', path: '/master-data/business-partners', icon: Briefcase, permission: 'master_data.read', section: 'master_data' },
     { name: 'Customer', path: '/master-data/customers', icon: Users, permission: 'master_data.read', section: 'master_data' },
     { name: 'Vendor', path: '/master-data/vendors', icon: UserCheck, permission: 'master_data.read', section: 'master_data' },

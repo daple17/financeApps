@@ -14,15 +14,13 @@ class StorageService {
         throw new Error('S3 Configuration is missing required environment variables.');
       }
       
-      // Stub for S3 implementation. 
-      // If S3 was fully implemented, we would use AWS SDK to upload the file buffer here.
       throw new Error('S3 Storage provider is configured but not fully implemented. Please implement AWS SDK logic or switch to local storage.');
     }
 
     // Default: local filesystem
     // Multer has already saved the file to local disk (e.g. server/uploads/operations)
-    // We just return the relative path that the database expects.
-    return file.path.replace('uploads/', '').replace('uploads\\', ''); // cross-platform replace
+    // We return the path with '/uploads/' prefix so it works directly as a static URL in the frontend.
+    return `/uploads/operations/${path.basename(file.path)}`;
   }
 
   async deleteFile(filePath) {
@@ -34,7 +32,15 @@ class StorageService {
     }
 
     // Default: local filesystem
-    const absolutePath = path.join(__dirname, '..', 'uploads', filePath);
+    let relativePath = filePath;
+    if (relativePath.startsWith('/uploads/')) {
+        relativePath = relativePath.replace('/uploads/', '');
+    } else if (relativePath.startsWith('/usr/src/app/operations/')) {
+        // Fallback for old buggy paths
+        relativePath = relativePath.replace('/usr/src/app/operations/', 'operations/');
+    }
+
+    const absolutePath = path.join(__dirname, '..', 'uploads', relativePath);
     if (fs.existsSync(absolutePath)) {
       fs.unlinkSync(absolutePath);
     }

@@ -87,12 +87,13 @@ class UserModel {
   /**
    * Insert audit log entry into audit_logs table
    */
-  static async logAudit({ userId, action, entityType, entityId, details, ipAddress }) {
+  static async logAudit({ userId, action, entityType, entityId, details, ipAddress }, externalConnection = null) {
     const query = `
       INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address)
       VALUES (?, ?, ?, ?, ?, ?)
     `;
-    await db.query(query, [
+    const executor = externalConnection || db;
+    await executor.query(query, [
       userId || null,
       action,
       entityType,

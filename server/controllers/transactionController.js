@@ -40,6 +40,29 @@ class TransactionController {
       next(error);
     }
   }
+  static async update(req, res, next) {
+    try {
+      const transaction = await TransactionService.getTransactionById(req.params.id);
+      if (transaction && transaction.source_type) {
+        return res.status(409).json({ status: 'error', message: 'System-generated transactions cannot be updated manually' });
+      }
+      res.status(501).json({ status: 'error', message: 'Not implemented' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async delete(req, res, next) {
+    try {
+      const transaction = await TransactionService.getTransactionById(req.params.id);
+      if (transaction && transaction.source_type) {
+        return res.status(409).json({ status: 'error', message: 'System-generated transactions cannot be deleted manually' });
+      }
+      res.status(501).json({ status: 'error', message: 'Not implemented' });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = TransactionController;

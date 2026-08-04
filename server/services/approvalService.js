@@ -1,16 +1,72 @@
 const TransactionModel = require('../models/transactionModel');
 const OperationCostModel = require('../models/operationCostModel');
+const CashAdvanceModel = require('../models/cashAdvanceModel');
 const UserModel = require('../models/userModel');
+const SettlementModel = require('../models/settlementModel');
+const SettlementService = require('./settlementService');
 
 class ApprovalService {
   static async getPendingApprovals(filters) {
     if (filters.type === 'OPERATION_COST') {
       return await OperationCostModel.getPendingApprovals();
     }
+    if (filters.type === 'CASH_ADVANCE') {
+      return await CashAdvanceModel.findAll({ status: 'SUBMITTED' });
+    }
+    if (filters.type === 'SETTLEMENT') {
+      return await SettlementModel.findAll({ status: 'SUBMITTED' });
+    }
     return await TransactionModel.findAll({ ...filters, status: 'PENDING_APPROVAL' });
   }
 
   static async approve(entityId, userId, entityType = 'TRANSACTION') {
+    if (entityType === 'SETTLEMENT') {
+      await SettlementService.approve(entityId, userId);
+      await UserModel.logAudit({
+        userId,
+        action: 'SETTLEMENT_APPROVED',
+        entityType: 'SETTLEMENT',
+        entityId: entityId,
+        details: { settlement_id: entityId }
+      });
+      return await SettlementModel.findById(entityId);
+    }
+
+    if (entityType === 'CASH_ADVANCE') {
+      const advance = await CashAdvanceModel.findById(entityId);
+      if (!advance) {
+        const error = new Error('Cash Advance tidak ditemukan');
+        error.statusCode = 404;
+        throw error;
+      }
+      if (advance.status !== 'SUBMITTED') {
+        const error = new Error(`Status Cash Advance adalah ${advance.status}, bukan SUBMITTED`);
+        error.statusCode = 400;
+        throw error;
+      }
+      if (advance.created_by === userId) {
+        const error = new Error('Pemisahan tugas: Anda tidak dapat menyetujui pengajuan yang Anda buat sendiri');
+        error.statusCode = 403;
+        throw error;
+      }
+      
+      const success = await CashAdvanceModel.approve(entityId, userId);
+      if (!success) {
+        const error = new Error('Gagal menyetujui Cash Advance');
+        error.statusCode = 409;
+        throw error;
+      }
+      
+      await UserModel.logAudit({
+        userId,
+        action: 'CASH_ADVANCE_APPROVED',
+        entityType: 'CASH_ADVANCE',
+        entityId: entityId,
+        details: { advance_no: advance.advance_no }
+      });
+      return await CashAdvanceModel.findById(entityId);
+    }
+
     if (entityType === 'OPERATION_COST') {
       const operationCost = await OperationCostModel.findById(entityId);
       if (!operationCost) {
@@ -81,6 +137,53 @@ class ApprovalService {
       const error = new Error('Alasan penolakan pengajuan wajib diisi');
       error.statusCode = 400;
       throw error;
+    }
+
+    if (entityType === 'SETTLEMENT') {
+      await SettlementService.reject(entityId, userId, rejectionReason);
+      await UserModel.logAudit({
+        userId,
+        action: 'SETTLEMENT_REJECTED',
+        entityType: 'SETTLEMENT',
+        entityId: entityId,
+        details: { settlement_id: entityId, reason: rejectionReason }
+      });
+      return await SettlementModel.findById(entityId);
+    }
+
+    if (entityType === 'CASH_ADVANCE') {
+      const advance = await CashAdvanceModel.findById(entityId);
+      if (!advance) {
+        const error = new Error('Cash Advance tidak ditemukan');
+        error.statusCode = 404;
+        throw error;
+      }
+      if (advance.status !== 'SUBMITTED') {
+        const error = new Error(`Status Cash Advance adalah ${advance.status}, bukan SUBMITTED`);
+        error.statusCode = 400;
+        throw error;
+      }
+      if (advance.created_by === userId) {
+        const error = new Error('Pemisahan tugas: Anda tidak dapat menolak pengajuan yang Anda buat sendiri');
+        error.statusCode = 403;
+        throw error;
+      }
+      
+      const success = await CashAdvanceModel.reject(entityId, userId, rejectionReason);
+      if (!success) {
+        const error = new Error('Gagal menolak Cash Advance');
+        error.statusCode = 409;
+        throw error;
+      }
+      
+      await UserModel.logAudit({
+        userId,
+        action: 'CASH_ADVANCE_REJECTED',
+        entityType: 'CASH_ADVANCE',
+        entityId: entityId,
+        details: { advance_no: advance.advance_no, rejectionReason }
+      });
+      return await CashAdvanceModel.findById(entityId);
     }
 
     if (entityType === 'OPERATION_COST') {
