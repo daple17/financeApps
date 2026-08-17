@@ -46,6 +46,12 @@ import CashAdvanceDetailPage from '../features/operations/cash-advances/CashAdva
 import SettlementListPage from '../features/operations/settlements/SettlementListPage';
 import SettlementFormPage from '../features/operations/settlements/SettlementFormPage';
 import SettlementDetailPage from '../features/operations/settlements/SettlementDetailPage';
+
+import VendorInvoiceListPage from '../features/finance/accounts-payable/vendor-invoices/VendorInvoiceListPage';
+import VendorInvoiceFormPage from '../features/finance/accounts-payable/vendor-invoices/VendorInvoiceFormPage';
+import VendorInvoiceDetailPage from '../features/finance/accounts-payable/vendor-invoices/VendorInvoiceDetailPage';
+import VendorPaymentListPage from '../features/finance/accounts-payable/vendor-payments/VendorPaymentListPage';
+
 import { Briefcase, Users, UserCheck } from 'lucide-react';
 
 export default function AppRoutes() {
@@ -66,6 +72,23 @@ export default function AppRoutes() {
 
             <Route element={<ProtectedRoute requiredPermission="transactions.read" />}>
               <Route path="/transactions" element={<TransactionPage />} />
+            </Route>
+
+            <Route element={<ProtectedRoute requiredPermission="vendor_invoice.view" />}>
+              <Route path="/vendor-invoices" element={<VendorInvoiceListPage />} />
+              <Route path="/vendor-invoices/:id" element={<VendorInvoiceDetailPage />} />
+            </Route>
+            
+            <Route element={<ProtectedRoute requiredPermission="vendor_invoice.create" />}>
+              <Route path="/vendor-invoices/new" element={<VendorInvoiceFormPage />} />
+            </Route>
+            
+            <Route element={<ProtectedRoute requiredPermission="vendor_invoice.edit" />}>
+              <Route path="/vendor-invoices/:id/edit" element={<VendorInvoiceFormPage />} />
+            </Route>
+
+            <Route element={<ProtectedRoute requiredPermission="vendor_payment.view" />}>
+              <Route path="/vendor-payments" element={<VendorPaymentListPage />} />
             </Route>
 
             <Route element={<ProtectedRoute requiredPermission="approvals.read" />}>

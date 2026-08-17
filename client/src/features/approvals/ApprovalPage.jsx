@@ -9,6 +9,7 @@ import Badge from '../../components/ui/Badge';
 import Modal from '../../components/ui/Modal';
 import Input from '../../components/ui/Input';
 import SettlementApprovalModal from './components/SettlementApprovalModal';
+import VendorInvoiceApprovalModal from './components/VendorInvoiceApprovalModal';
 
 export default function ApprovalPage() {
   const [activeTab, setActiveTab] = useState('TRANSACTION');
@@ -33,7 +34,9 @@ export default function ApprovalPage() {
           ? '/approvals/pending?type=CASH_ADVANCE'
           : activeTab === 'SETTLEMENT'
             ? '/approvals/pending?type=SETTLEMENT'
-            : '/approvals/pending';
+            : activeTab === 'VENDOR_INVOICE'
+              ? '/approvals/pending?type=VENDOR_INVOICE'
+              : '/approvals/pending';
       const res = await api.get(endpoint);
       if (res.data.status === 'success') {
         setPendingApprovals(res.data.data || []);
@@ -58,7 +61,9 @@ export default function ApprovalPage() {
           ? `/approvals/${id}/approve?type=CASH_ADVANCE`
           : activeTab === 'SETTLEMENT'
             ? `/approvals/${id}/approve?type=SETTLEMENT`
-            : `/approvals/${id}/approve`;
+            : activeTab === 'VENDOR_INVOICE'
+              ? `/approvals/${id}/approve?type=VENDOR_INVOICE`
+              : `/approvals/${id}/approve`;
       await api.post(endpoint);
       showSuccess('Pengajuan berhasil disetujui');
       fetchPendingApprovals();
@@ -70,6 +75,12 @@ export default function ApprovalPage() {
   const handleOpenSettlementModal = (item) => {
     setSelectedItem(item);
     setIsSettlementModalOpen(true);
+  };
+
+  const [isVendorInvoiceModalOpen, setIsVendorInvoiceModalOpen] = useState(false);
+  const handleOpenVendorInvoiceModal = (item) => {
+    setSelectedItem(item);
+    setIsVendorInvoiceModalOpen(true);
   };
 
   const handleOpenRejectModal = (item) => {
@@ -92,7 +103,9 @@ export default function ApprovalPage() {
           ? `/approvals/${selectedItem.id}/reject?type=CASH_ADVANCE`
           : activeTab === 'SETTLEMENT'
             ? `/approvals/${selectedItem.id}/reject?type=SETTLEMENT`
-            : `/approvals/${selectedItem.id}/reject`;
+            : activeTab === 'VENDOR_INVOICE'
+              ? `/approvals/${selectedItem.id}/reject?type=VENDOR_INVOICE`
+              : `/approvals/${selectedItem.id}/reject`;
       await api.post(endpoint, { rejectionReason });
       showSuccess('Pengajuan telah ditolak');
       setIsRejectModalOpen(false);
@@ -164,6 +177,16 @@ export default function ApprovalPage() {
         >
           <Receipt className="w-4 h-4" /> Settlements
         </button>
+        <button
+          onClick={() => setActiveTab('VENDOR_INVOICE')}
+          className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'VENDOR_INVOICE'
+              ? 'border-sky-500 text-sky-400'
+              : 'border-transparent text-slate-400 hover:text-slate-300 hover:border-slate-600'
+          }`}
+        >
+          <FileText className="w-4 h-4" /> Vendor Invoices
+        </button>
       </div>
 
       {/* Main Pending Table */}
@@ -176,7 +199,9 @@ export default function ApprovalPage() {
                 ? "Pengajuan Operation Cost (Submitted)" 
                 : activeTab === 'CASH_ADVANCE'
                   ? "Pengajuan Cash Advance (Submitted)"
-                  : "Pengajuan Settlement (Submitted)"
+                  : activeTab === 'SETTLEMENT'
+                    ? "Pengajuan Settlement (Submitted)"
+                    : "Pengajuan Vendor Invoice (Submitted)"
           }
           subtitle={`Terdapat ${pendingApprovals.length} item menunggu persetujuan`}
         />
@@ -206,6 +231,21 @@ export default function ApprovalPage() {
                       <th className="py-3 px-4">Cost Type</th>
                       <th className="py-3 px-4">Description</th>
                       <th className="py-3 px-4">Submitted By</th>
+                      <th className="py-3 px-4 text-right">Amount</th>
+                    </>
+                  ) : activeTab === 'VENDOR_INVOICE' ? (
+                    <>
+                      <th className="py-3 px-4">AP Invoice No</th>
+                      <th className="py-3 px-4">Vendor</th>
+                      <th className="py-3 px-4">Due Date</th>
+                      <th className="py-3 px-4">Total Amount</th>
+                    </>
+                  ) : activeTab === 'SETTLEMENT' ? (
+                    <>
+                      <th className="py-3 px-4">No. Advance</th>
+                      <th className="py-3 px-4">Scope</th>
+                      <th className="py-3 px-4">Recipient</th>
+                      <th className="py-3 px-4">Purpose</th>
                       <th className="py-3 px-4 text-right">Amount</th>
                     </>
                   ) : (
@@ -251,6 +291,22 @@ export default function ApprovalPage() {
                         <td className="py-3 px-4 text-right font-mono font-bold text-white text-base">
                           Rp {Number(item.amount).toLocaleString('id-ID')}
                         </td>
+                    ) : activeTab === 'VENDOR_INVOICE' ? (
+                      <>
+                        <td className="py-3 px-4 font-mono font-bold text-amber-400">
+                          {item.ap_invoice_no}
+                          <div className="text-xs font-normal text-slate-500">{item.vendor_invoice_number}</div>
+                        </td>
+                        <td className="py-3 px-4 text-white font-medium">
+                          {item.vendor_name}
+                          <div className="text-xs font-normal text-slate-500">{item.item_count} items</div>
+                        </td>
+                        <td className="py-3 px-4 text-slate-300">
+                          {new Date(item.due_date).toLocaleDateString('id-ID')}
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono font-bold text-white text-base">
+                          Rp {Number(item.total_amount).toLocaleString('id-ID')}
+                        </td>
                       </>
                     ) : (
                       <>
@@ -268,7 +324,7 @@ export default function ApprovalPage() {
                         </td>
                         <td className="py-3 px-4 text-slate-300 max-w-xs truncate">{item.purpose}</td>
                         <td className="py-3 px-4 text-right font-mono font-bold text-white text-base">
-                          Rp {Number(item.amount).toLocaleString('id-ID')}
+                          Rp {Number(item.total_amount || item.amount).toLocaleString('id-ID')}
                         </td>
                       </>
                     )}
@@ -280,6 +336,15 @@ export default function ApprovalPage() {
                             variant="outline"
                             size="sm"
                             onClick={() => handleOpenSettlementModal(item)}
+                            className="text-xs"
+                          >
+                            <FileText className="w-3.5 h-3.5 mr-1" /> View Detail
+                          </Button>
+                        ) : activeTab === 'VENDOR_INVOICE' ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleOpenVendorInvoiceModal(item)}
                             className="text-xs"
                           >
                             <FileText className="w-3.5 h-3.5 mr-1" /> View Detail
@@ -328,6 +393,8 @@ export default function ApprovalPage() {
               <>Transaksi <strong className="text-amber-400">#{selectedItem?.transaction_number}</strong></>
             ) : activeTab === 'OPERATION_COST' ? (
               <>Biaya Operasional <strong className="text-amber-400">#{selectedItem?.operation_no} - {selectedItem?.cost_type}</strong></>
+            ) : activeTab === 'VENDOR_INVOICE' ? (
+              <>Vendor Invoice <strong className="text-amber-400">{selectedItem?.ap_invoice_no}</strong></>
             ) : (
               <>Cash Advance <strong className="text-amber-400">#{selectedItem?.advance_no}</strong></>
             )}
@@ -358,6 +425,15 @@ export default function ApprovalPage() {
         isOpen={isSettlementModalOpen}
         onClose={() => setIsSettlementModalOpen(false)}
         settlementId={selectedItem?.id}
+        onApprove={(id) => handleApprove(id)}
+        onReject={(data) => handleOpenRejectModal(data)}
+      />
+
+      {/* Vendor Invoice Detail Modal for Approval */}
+      <VendorInvoiceApprovalModal
+        isOpen={isVendorInvoiceModalOpen}
+        onClose={() => setIsVendorInvoiceModalOpen(false)}
+        vendorInvoiceId={selectedItem?.id}
         onApprove={(id) => handleApprove(id)}
         onReject={(data) => handleOpenRejectModal(data)}
       />

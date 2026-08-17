@@ -14,8 +14,8 @@ class TransactionModel {
       // 1. Insert Transaction
       const trxQuery = `
         INSERT INTO transactions 
-          (transaction_number, date, type, description, amount, status, attachment_url, created_by)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          (transaction_number, date, type, description, amount, status, attachment_url, created_by, source_type, source_id, source_number, is_system_generated)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
       const [trxResult] = await connection.query(trxQuery, [
         transactionData.transactionNumber,
@@ -25,7 +25,11 @@ class TransactionModel {
         transactionData.amount,
         transactionData.status,
         transactionData.attachmentUrl || null,
-        transactionData.createdBy
+        transactionData.createdBy,
+        transactionData.sourceType || null,
+        transactionData.sourceId || null,
+        transactionData.sourceNumber || null,
+        transactionData.isSystemGenerated || false
       ]);
 
       const transactionId = trxResult.insertId;

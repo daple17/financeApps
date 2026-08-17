@@ -23,6 +23,8 @@ const operationCostRoutes = require('./routes/operationCostRoutes');
 const cashAdvanceRoutes = require('./routes/cashAdvanceRoutes');
 const costTypeMappingRoutes = require('./routes/costTypeMappingRoutes');
 const settlementRoutes = require('./routes/settlementRoutes');
+const vendorInvoiceRoutes = require('./routes/vendorInvoiceRoutes');
+const vendorPaymentRoutes = require('./routes/vendorPaymentRoutes');
 
 const app = express();
 
@@ -71,6 +73,8 @@ app.use('/api/v1', operationCostRoutes);
 app.use('/api/v1/cash-advances', cashAdvanceRoutes);
 app.use('/api/v1/cost-type-mappings', costTypeMappingRoutes);
 app.use('/api/v1/settlements', settlementRoutes);
+app.use('/api/v1/vendor-invoices', vendorInvoiceRoutes);
+app.use('/api/v1/vendor-payments', vendorPaymentRoutes);
 
 // Serve static uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));

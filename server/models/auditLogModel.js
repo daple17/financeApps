@@ -36,6 +36,23 @@ class AuditLogModel {
       };
     });
   }
+
+  static async create(data, connection) {
+    const conn = connection || db;
+    const query = `
+      INSERT INTO audit_logs (entity_type, entity_id, action, user_id, details)
+      VALUES (?, ?, ?, ?, ?)
+    `;
+    const params = [
+      data.entity_type,
+      data.entity_id,
+      data.action,
+      data.user_id || null,
+      data.details ? JSON.stringify(data.details) : null
+    ];
+    const [result] = await conn.query(query, params);
+    return result.insertId;
+  }
 }
 
 module.exports = AuditLogModel;

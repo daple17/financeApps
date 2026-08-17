@@ -19,7 +19,8 @@ import {
   Box,
   Package,
   Settings,
-  Wallet
+  Wallet,
+  Banknote
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -46,6 +47,8 @@ export default function Sidebar({ isOpen, onClose }) {
     { name: 'Vehicle', path: '/master-data/vehicles', icon: Truck, permission: 'master_data.read', section: 'master_data' },
     { name: 'Chart of Accounts', path: '/coa', icon: FolderTree, permission: 'coa.read', section: 'keuangan' },
     { name: 'Transaksi', path: '/transactions', icon: Receipt, permission: 'transactions.read', section: 'keuangan' },
+    { name: 'Vendor Invoices', path: '/vendor-invoices', icon: Receipt, permission: 'vendor_invoice.view', section: 'keuangan' },
+    { name: 'Vendor Payments', path: '/vendor-payments', icon: Banknote, permission: 'vendor_payment.view', section: 'keuangan' },
     { name: 'Approval Flow', path: '/approvals', icon: CheckSquare, permission: 'approvals.read', section: 'keuangan' },
     { name: 'Manajemen Anggaran', path: '/budgets', icon: PieChart, permission: 'budgets.read', section: 'keuangan' },
     { name: 'Laporan Keuangan', path: '/reports', icon: FileSpreadsheet, permission: 'reports.read', section: 'keuangan' },

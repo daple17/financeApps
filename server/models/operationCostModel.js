@@ -54,17 +54,44 @@ class OperationCostModel {
              u1.name as created_by_name,
              u2.name as approved_by_name,
              bp.partner_name as vendor_name,
-             s.settlement_no
+             s.settlement_no,
+             vi.ap_invoice_no as vendor_invoice_no,
+             vi.id as vendor_invoice_id
       FROM operation_costs oc
       LEFT JOIN users u1 ON oc.created_by = u1.id
       LEFT JOIN users u2 ON oc.approved_by = u2.id
       LEFT JOIN business_partners bp ON oc.vendor_id = bp.id
       LEFT JOIN settlement_items si ON oc.id = si.operation_cost_id
       LEFT JOIN settlements s ON si.settlement_id = s.id
+      LEFT JOIN vendor_invoice_items vii ON oc.id = vii.operation_cost_id
+      LEFT JOIN vendor_invoices vi ON vii.vendor_invoice_id = vi.id
       WHERE oc.operation_id = ?
       ORDER BY oc.transaction_date DESC, oc.created_at DESC
     `;
     const [rows] = await db.query(query, [operationId]);
+    return rows;
+  }
+
+  static async findEligibleForVendorInvoice(vendorId, connection) {
+    const conn = connection || db;
+    // Costs must be APPROVED, match the vendor_id, NOT be linked to any active vendor_invoice,
+    // and NOT be linked to any cash advance settlement.
+    const query = `
+      SELECT oc.*, 
+             op.operation_no, 
+             jo.job_order_number
+      FROM operation_costs oc
+      LEFT JOIN operations op ON oc.operation_id = op.id
+      LEFT JOIN job_orders jo ON oc.job_order_id = jo.id
+      LEFT JOIN settlement_items si ON oc.id = si.operation_cost_id
+      LEFT JOIN vendor_invoice_items vii ON oc.id = vii.operation_cost_id
+      WHERE oc.status = 'APPROVED'
+        AND oc.vendor_id = ?
+        AND si.id IS NULL
+        AND vii.id IS NULL
+      ORDER BY oc.transaction_date ASC
+    `;
+    const [rows] = await conn.query(query, [vendorId]);
     return rows;
   }
 

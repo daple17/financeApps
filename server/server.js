@@ -50,7 +50,9 @@ async function autoMigrate() {
       '023_cost_type_account_mappings.sql',
       '024_settlements_and_items.sql',
       '025_settlement_items_account.sql',
-      '026_transaction_source_metadata.sql'
+      '026_transaction_source_metadata.sql',
+      '027_document_sequences.sql',
+      '028_vendor_invoices_and_items.sql'
     ];
     
     for (let file of files) {

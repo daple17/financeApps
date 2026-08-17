@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Save, X, ArrowLeft, Plus, Trash2 } from 'lucide-react';
 import { masterDataService } from '../../../services/masterDataService';
+import { getEligibleCosts } from '../../../services/vendorInvoiceService';
 import { Card } from '../../../components/ui/Card';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
@@ -56,6 +57,19 @@ export default function BusinessPartnerForm() {
       loadPartner();
     }
   }, [id, isEdit, location.pathname]);
+
+  const [vendorSummary, setVendorSummary] = useState({ outstanding: 0 });
+
+  useEffect(() => {
+    if (isEdit && formData.roles?.includes('VENDOR') && id) {
+      getEligibleCosts(id).then(res => {
+        if (res.status === 'success') {
+          const total = res.data.reduce((acc, curr) => acc + parseFloat(curr.amount), 0);
+          setVendorSummary({ outstanding: total });
+        }
+      }).catch(err => console.error(err));
+    }
+  }, [isEdit, formData.roles, id]);
 
   const loadPartner = async () => {
     try {
@@ -200,6 +214,33 @@ export default function BusinessPartnerForm() {
       {error && (
         <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400 text-sm">
           {error}
+        </div>
+      )}
+
+      {isEdit && formData.roles?.includes('VENDOR') && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <Card className="p-4 bg-slate-800/50">
+            <div className="text-slate-400 text-sm font-medium">Total Vendor Costs</div>
+            <div className="text-2xl font-bold text-sky-400 mt-1">Rp 0</div>
+            <div className="text-xs text-slate-500 mt-1">Total seluruh tagihan</div>
+          </Card>
+          <Card className="p-4 bg-slate-800/50">
+            <div className="text-slate-400 text-sm font-medium">Outstanding Vendor Costs</div>
+            <div className="text-2xl font-bold text-amber-400 mt-1">
+              {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(vendorSummary.outstanding)}
+            </div>
+            <div className="text-xs text-slate-500 mt-1">Biaya belum di-invoice</div>
+          </Card>
+          <Card className="p-4 bg-slate-800/50 opacity-50">
+            <div className="text-slate-400 text-sm font-medium">Outstanding AP</div>
+            <div className="text-2xl font-bold text-slate-400 mt-1">Rp 0</div>
+            <div className="text-xs text-slate-500 mt-1">Dalam proses</div>
+          </Card>
+          <Card className="p-4 bg-slate-800/50 opacity-50">
+            <div className="text-slate-400 text-sm font-medium">Paid AP</div>
+            <div className="text-2xl font-bold text-slate-400 mt-1">Rp 0</div>
+            <div className="text-xs text-slate-500 mt-1">Sudah dibayar</div>
+          </Card>
         </div>
       )}
 

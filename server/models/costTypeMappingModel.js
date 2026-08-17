@@ -3,7 +3,7 @@ const db = require('../config/db');
 class CostTypeMappingModel {
   static async getAll() {
     const [rows] = await db.query(`
-      SELECT m.*, a.name as account_name, a.code as account_code, a.type as account_type
+      SELECT m.*, a.name as account_name, a.code as account_code, a.type as account_type, a.is_active as account_is_active
       FROM cost_type_account_mappings m
       JOIN accounts a ON m.account_id = a.id
       ORDER BY m.cost_type ASC
@@ -13,7 +13,7 @@ class CostTypeMappingModel {
 
   static async findByCostType(costType) {
     const [rows] = await db.query(`
-      SELECT m.*, a.name as account_name, a.code as account_code, a.type as account_type
+      SELECT m.*, a.name as account_name, a.code as account_code, a.type as account_type, a.is_active as account_is_active
       FROM cost_type_account_mappings m
       JOIN accounts a ON m.account_id = a.id
       WHERE m.cost_type = ?
@@ -23,7 +23,7 @@ class CostTypeMappingModel {
 
   static async findById(id) {
     const [rows] = await db.query(`
-      SELECT m.*, a.name as account_name, a.code as account_code, a.type as account_type
+      SELECT m.*, a.name as account_name, a.code as account_code, a.type as account_type, a.is_active as account_is_active
       FROM cost_type_account_mappings m
       JOIN accounts a ON m.account_id = a.id
       WHERE m.id = ?

@@ -320,10 +320,18 @@ export default function OperationCostTab({ operationId, jobOrderId }) {
                           <div className="flex flex-col items-center gap-1.5">
                             {getStatusBadge(cost.status)}
                             {cost.settlement_no && (
-                              <Badge variant="info" className="scale-90">
+                              <Badge variant="info" className="scale-90 cursor-pointer" onClick={() => navigate(`/settlements/${cost.settlement_id}`)}>
                                 <span className="flex items-center gap-1 text-[10px]">
                                   <Receipt className="w-3 h-3" />
                                   {cost.settlement_no}
+                                </span>
+                              </Badge>
+                            )}
+                            {cost.vendor_invoice_no && (
+                              <Badge variant="primary" className="scale-90 cursor-pointer" onClick={() => navigate(`/vendor-invoices/${cost.vendor_invoice_id}`)}>
+                                <span className="flex items-center gap-1 text-[10px]">
+                                  <Receipt className="w-3 h-3" />
+                                  {cost.vendor_invoice_no}
                                 </span>
                               </Badge>
                             )}

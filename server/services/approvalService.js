@@ -4,6 +4,8 @@ const CashAdvanceModel = require('../models/cashAdvanceModel');
 const UserModel = require('../models/userModel');
 const SettlementModel = require('../models/settlementModel');
 const SettlementService = require('./settlementService');
+const VendorInvoiceModel = require('../models/vendorInvoiceModel');
+const VendorInvoiceService = require('./vendorInvoiceService');
 
 class ApprovalService {
   static async getPendingApprovals(filters) {
@@ -15,6 +17,9 @@ class ApprovalService {
     }
     if (filters.type === 'SETTLEMENT') {
       return await SettlementModel.findAll({ status: 'SUBMITTED' });
+    }
+    if (filters.type === 'VENDOR_INVOICE') {
+      return await VendorInvoiceModel.getPendingApprovals();
     }
     return await TransactionModel.findAll({ ...filters, status: 'PENDING_APPROVAL' });
   }
@@ -103,6 +108,11 @@ class ApprovalService {
       });
 
       return await OperationCostModel.findById(entityId);
+    }
+
+    if (entityType === 'VENDOR_INVOICE') {
+      await VendorInvoiceService.approve(entityId, userId);
+      return await VendorInvoiceModel.findById(entityId);
     }
 
     // Default Transaction logic
@@ -222,6 +232,11 @@ class ApprovalService {
       });
 
       return await OperationCostModel.findById(entityId);
+    }
+
+    if (entityType === 'VENDOR_INVOICE') {
+      await VendorInvoiceService.reject(entityId, userId, rejectionReason);
+      return await VendorInvoiceModel.findById(entityId);
     }
 
     // Default Transaction logic
