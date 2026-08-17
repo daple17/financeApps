@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { X, Send, AlertCircle } from 'lucide-react';
-import Button from '../../../../../../components/ui/Button';
-import { getPostingPreview, postLiability } from '../../../../../../services/vendorInvoiceService';
-import { useToast } from '../../../../../../context/ToastContext';
+import Button from '../../../../../components/ui/Button';
+import { getPostingPreview, postLiability } from '../../../../../services/vendorInvoiceService';
+import { useToast } from '../../../../../context/ToastContext';
 
 export default function VendorInvoicePostingModal({ invoice, onClose, onSuccess }) {
   const { showSuccess, showError } = useToast();

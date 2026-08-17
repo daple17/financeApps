@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { X, Send, AlertCircle } from 'lucide-react';
-import Button from '../../../../components/ui/Button';
-import Input from '../../../../components/ui/Input';
-import { vendorPaymentApi } from '../../../../services/vendorPaymentApi';
-import { useToast } from '../../../../context/ToastContext';
+import Button from '../../../../../components/ui/Button';
+import Input from '../../../../../components/ui/Input';
+import { vendorPaymentApi } from '../../../../../services/vendorPaymentApi';
+import { useToast } from '../../../../../context/ToastContext';
 
 export default function VendorPaymentModal({ invoice, onClose, onSuccess }) {
   const { showSuccess, showError } = useToast();
@@ -25,7 +25,7 @@ export default function VendorPaymentModal({ invoice, onClose, onSuccess }) {
   const fetchCashAccounts = async () => {
     setIsLoadingAccounts(true);
     try {
-      const api = require('../../../../services/api').default;
+      const api = require('../../../../../services/api').default;
       const res = await api.get('/coa/cash-bank-accounts');
       if (res.data.status === 'success') {
         setCashAccounts(res.data.data);

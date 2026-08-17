@@ -10,7 +10,7 @@ import {
   addItem,
   removeItem
 } from '../../../../services/vendorInvoiceService';
-import { getBusinessPartners } from '../../../../services/masterDataService';
+import { masterDataService } from '../../../../services/masterDataService';
 import { useToast } from '../../../../context/ToastContext';
 import { Card, CardHeader } from '../../../../components/ui/Card';
 import Button from '../../../../components/ui/Button';
@@ -55,7 +55,7 @@ export default function VendorInvoiceFormPage() {
 
   const fetchVendors = async () => {
     try {
-      const res = await getBusinessPartners({ role: 'VENDOR' });
+      const res = await masterDataService.getAllBusinessPartners({ role: 'VENDOR' });
       if (res.status === 'success') {
         setVendors(res.data);
       }

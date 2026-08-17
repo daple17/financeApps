@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, RefreshCw, Search, Receipt } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getVendorInvoices, getVendorInvoiceDashboard } from '../../../../services/vendorInvoiceService';
-import { getBusinessPartners } from '../../../../services/masterDataService';
+import { masterDataService } from '../../../../services/masterDataService';
 import { useToast } from '../../../../context/ToastContext';
 import { useAuth } from '../../../../context/AuthContext';
 import { Card } from '../../../../components/ui/Card';
@@ -47,7 +47,7 @@ export default function VendorInvoiceListPage() {
 
   const fetchVendors = async () => {
     try {
-      const res = await getBusinessPartners({ role: 'VENDOR' });
+      const res = await masterDataService.getAllBusinessPartners({ role: 'VENDOR' });
       if (res.status === 'success') {
         setVendors(res.data);
       }

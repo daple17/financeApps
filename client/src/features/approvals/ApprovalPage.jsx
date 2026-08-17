@@ -291,6 +291,7 @@ export default function ApprovalPage() {
                         <td className="py-3 px-4 text-right font-mono font-bold text-white text-base">
                           Rp {Number(item.amount).toLocaleString('id-ID')}
                         </td>
+                      </>
                     ) : activeTab === 'VENDOR_INVOICE' ? (
                       <>
                         <td className="py-3 px-4 font-mono font-bold text-amber-400">
