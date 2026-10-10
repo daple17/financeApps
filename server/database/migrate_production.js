@@ -36,18 +36,60 @@ const MIGRATION_FILES = [
   '029_add_account_snapshot_to_vendor_invoice_items.sql',
 ];
 
+// Error codes that are safe to ignore (already exists / duplicate data)
+const SAFE_ERROR_CODES = [
+  'ER_TABLE_EXISTS_ERROR',     // Table already exists
+  'ER_DUP_FIELDNAME',          // Column already exists
+  'ER_DUP_KEYNAME',            // Index already exists
+  'ER_DUP_ENTRY',              // Duplicate INSERT (seed data already inserted)
+  'ER_CANT_DROP_FIELD_OR_KEY', // Key doesn't exist on DROP
+];
+
+function isSafeError(err) {
+  return SAFE_ERROR_CODES.includes(err.code);
+}
+
+async function executeStatements(connection, sqlContent, label) {
+  // Split SQL into individual statements and execute one by one
+  const statements = sqlContent
+    .split(';')
+    .map(s => s.trim())
+    .filter(s => s.length > 0 && !s.startsWith('--'));
+
+  let okCount = 0;
+  let skipCount = 0;
+  let errorCount = 0;
+
+  for (const stmt of statements) {
+    try {
+      await connection.query(stmt);
+      okCount++;
+    } catch (err) {
+      if (isSafeError(err)) {
+        skipCount++; // Silently skip safe errors
+      } else {
+        errorCount++;
+        console.warn(`  ⚠️  [${label}] ${err.message}`);
+        console.warn(`       Statement: ${stmt.substring(0, 120)}...`);
+      }
+    }
+  }
+
+  return { okCount, skipCount, errorCount };
+}
+
 async function runProductionMigration() {
   console.log('==================================================');
   console.log('🚀 [Production Migration] Starting...');
   console.log('==================================================');
 
+  // No multipleStatements - we handle statement-by-statement manually
   const connection = await mysql.createConnection({
     host:     process.env.MYSQLHOST     || process.env.DB_HOST     || 'localhost',
     port:     process.env.MYSQLPORT     || process.env.DB_PORT     || 3306,
     user:     process.env.MYSQLUSER     || process.env.DB_USER     || 'root',
     password: process.env.MYSQLPASSWORD || process.env.DB_PASSWORD || '',
     database: process.env.MYSQLDATABASE || process.env.DB_NAME     || 'railway',
-    multipleStatements: true,
   });
 
   console.log('✅ [Production Migration] Database connected.');
@@ -57,7 +99,7 @@ async function runProductionMigration() {
     const initSqlPath = path.join(__dirname, 'init.sql');
     const initSqlRaw  = fs.readFileSync(initSqlPath, 'utf8');
 
-    // Remove DROP TABLE lines to make it non-destructive
+    // Remove DROP TABLE lines → non-destructive
     const safeSql = initSqlRaw
       .split('\n')
       .filter(line => !line.trim().toUpperCase().startsWith('DROP TABLE'))
@@ -69,9 +111,15 @@ async function runProductionMigration() {
       'CREATE TABLE IF NOT EXISTS '
     );
 
+    // Make INSERT idempotent - ignore duplicate seed data
+    const seedSafeSql = idempotentSql.replace(
+      /INSERT INTO\s+/gi,
+      'INSERT IGNORE INTO '
+    );
+
     console.log('\n📄 Executing core schema (init.sql - safe mode)...');
-    await connection.query(idempotentSql);
-    console.log('✅ Core schema applied.');
+    const initResult = await executeStatements(connection, seedSafeSql, 'init.sql');
+    console.log(`   ✅ Done: ${initResult.okCount} ok, ${initResult.skipCount} skipped, ${initResult.errorCount} warnings`);
 
     // ── STEP 2: Run all migration files ────────────────────────────────────
     const migrationsDir = path.join(__dirname, 'migrations');
@@ -85,22 +133,9 @@ async function runProductionMigration() {
       }
 
       const sqlContent = fs.readFileSync(filePath, 'utf8');
-      const statements = sqlContent.split(';').map(s => s.trim()).filter(s => s.length > 0);
-
-      let hasError = false;
-      for (const stmt of statements) {
-        try {
-          await connection.query(stmt);
-        } catch (err) {
-          // Safely ignore "already exists" type errors
-          const safeErrors = ['ER_TABLE_EXISTS_ERROR', 'ER_DUP_FIELDNAME', 'ER_DUP_KEYNAME'];
-          if (!safeErrors.includes(err.code)) {
-            hasError = true;
-            console.warn(`    ⚠️  [${file}] ${err.message}`);
-          }
-        }
-      }
-      console.log(`  ${hasError ? '⚠️ ' : '✅'} ${file}`);
+      const result = await executeStatements(connection, sqlContent, file);
+      const status = result.errorCount === 0 ? '✅' : '⚠️ ';
+      console.log(`  ${status} ${file} (ok:${result.okCount}, skip:${result.skipCount}, warn:${result.errorCount})`);
     }
 
     console.log('\n==================================================');
