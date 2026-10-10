@@ -34,6 +34,8 @@ const MIGRATION_FILES = [
   '027_document_sequences.sql',
   '028_vendor_invoices_and_items.sql',
   '029_add_account_snapshot_to_vendor_invoice_items.sql',
+  '030_add_accounts_payable_mapping.sql',
+  '031_vendor_payments.sql',
 ];
 
 // Error codes that are safe to ignore (already exists / duplicate data)
@@ -43,6 +45,7 @@ const SAFE_ERROR_CODES = [
   'ER_DUP_KEYNAME',            // Index already exists
   'ER_DUP_ENTRY',              // Duplicate INSERT (seed data already inserted)
   'ER_CANT_DROP_FIELD_OR_KEY', // Key doesn't exist on DROP
+  'ER_FK_DUP_NAME',            // Foreign key constraint already exists
 ];
 
 function isSafeError(err) {
@@ -50,8 +53,13 @@ function isSafeError(err) {
 }
 
 async function executeStatements(connection, sqlContent, label) {
+  // Strip full-line comments first, otherwise a statement preceded by a
+  // comment line would be discarded together with the comment.
   // Split SQL into individual statements and execute one by one
   const statements = sqlContent
+    .split('\n')
+    .filter(line => !line.trim().startsWith('--'))
+    .join('\n')
     .split(';')
     .map(s => s.trim())
     .filter(s => s.length > 0 && !s.startsWith('--'));

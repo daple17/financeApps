@@ -4,7 +4,7 @@ ADD COLUMN expense_account_code_snapshot VARCHAR(50) NULL,
 ADD COLUMN expense_account_name_snapshot VARCHAR(150) NULL;
 
 ALTER TABLE vendor_invoice_items
-ADD FOREIGN KEY (expense_account_id) REFERENCES accounts(id) ON DELETE RESTRICT;
+ADD CONSTRAINT fk_vii_expense_account FOREIGN KEY (expense_account_id) REFERENCES accounts(id) ON DELETE RESTRICT;
 
 -- Backfill for any existing APPROVED or further status invoices
 -- (Safeguard per user instructions, ensures unambigious mapping)
