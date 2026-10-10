@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const VendorPaymentController = require('../controllers/vendorPaymentController');
-const { authMiddleware, hasPermission } = require('../middleware/authMiddleware');
+const { authMiddleware, hasPermission } = require('../middlewares/authMiddleware');
 
 router.use(authMiddleware);
 
