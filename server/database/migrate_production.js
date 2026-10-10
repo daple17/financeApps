@@ -156,6 +156,16 @@ async function runProductionMigration() {
   } finally {
     await connection.end();
   }
+
+  // Optional: load demo master data when SEED_SAMPLE_DATA=true (idempotent).
+  // A failing seed must not block the server from starting.
+  if (process.env.SEED_SAMPLE_DATA === 'true') {
+    try {
+      await require('./seed_sample_data')();
+    } catch (error) {
+      console.error('⚠️  [Sample Seed] Skipped:', error.message);
+    }
+  }
 }
 
 runProductionMigration();

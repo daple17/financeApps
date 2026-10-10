@@ -6,7 +6,8 @@
     "postinstall": "cd server && npm install && cd ../client && npm install",
     "build": "cd client && npm run build",
     "start": "cd server && npm start",
-    "migrate-prod": "cd server && npm run db:migrate-prod"
+    "migrate-prod": "cd server && npm run db:migrate-prod",
+    "seed-sample": "cd server && npm run db:seed-sample"
   },
   "engines": {
     "node": ">=18.0.0"
